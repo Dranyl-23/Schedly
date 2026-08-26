@@ -208,7 +208,10 @@ class ScheduleDetailView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top Tags
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -233,8 +236,7 @@ class ScheduleDetailView extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (linkedProfile != null) ...[
-                      const SizedBox(width: 8),
+                    if (linkedProfile != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
@@ -254,8 +256,6 @@ class ScheduleDetailView extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    ],
-                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
