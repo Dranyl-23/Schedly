@@ -350,6 +350,162 @@ class ScheduleProfilesView extends ConsumerWidget {
     );
   }
 
+  void _confirmDeleteProfile(BuildContext context, WidgetRef ref, ScheduleProfile profile) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final profiles = ref.read(profileListProvider);
+
+    if (profiles.length <= 1) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B)),
+              SizedBox(width: 8),
+              Text('Cannot Delete', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+            ],
+          ),
+          content: const Text(
+            'You must keep at least one active schedule profile in Schedly.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 22),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Delete Schedule?',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "${profile.name}"? This action cannot be undone.',
+          style: const TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await ref.read(profileListProvider.notifier).deleteProfile(profile.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Deleted "${profile.name}"'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, ScheduleProfile profile) {
+    final nameController = TextEditingController(text: profile.name);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Rename Profile',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Enter profile name',
+            filled: true,
+            fillColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white70 : const Color(0xFF64748B),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              final newName = nameController.text.trim();
+              if (newName.isNotEmpty) {
+                final updated = profile.copyWith(name: newName, updatedAt: DateTime.now());
+                await ref.read(profileListProvider.notifier).addProfile(updated);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
@@ -400,67 +556,142 @@ class ScheduleProfilesView extends ConsumerWidget {
           final profile = profiles[index];
           final isSelected = profile.isActive;
 
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceDark : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF2563EB)
-                    : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
-                width: isSelected ? 2 : 1,
+          return Dismissible(
+            key: Key(profile.id),
+            direction: DismissDirection.endToStart,
+            confirmDismiss: (direction) async {
+              if (profiles.length <= 1) {
+                _confirmDeleteProfile(context, ref, profile);
+                return false;
+              }
+              _confirmDeleteProfile(context, ref, profile);
+              return false; // Handled by dialog confirmation
+            },
+            background: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDC2626),
+                borderRadius: BorderRadius.circular(16),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Delete',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.delete_forever_rounded, color: Colors.white, size: 24),
+                ],
+              ),
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: profile.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(profile.icon, color: profile.color, size: 22),
-              ),
-              title: Text(
-                profile.name,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-              subtitle: Text(
-                isSelected
-                    ? 'Active • Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}'
-                    : 'Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}',
-                style: TextStyle(
-                  fontSize: 12,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
                   color: isSelected
                       ? const Color(0xFF2563EB)
-                      : (isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B)),
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                  width: isSelected ? 2 : 1,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-              trailing: Radio<bool>(
-                value: true,
-                // ignore: deprecated_member_use
-                groupValue: isSelected,
-                activeColor: const Color(0xFF2563EB),
-                // ignore: deprecated_member_use
-                onChanged: (_) {
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: profile.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(profile.icon, color: profile.color, size: 22),
+                ),
+                title: Text(
+                  profile.name,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                subtitle: Text(
+                  isSelected
+                      ? 'Active • Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}'
+                      : 'Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isSelected
+                        ? const Color(0xFF2563EB)
+                        : (isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B)),
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Radio<bool>(
+                      value: true,
+                      // ignore: deprecated_member_use
+                      groupValue: isSelected,
+                      activeColor: const Color(0xFF2563EB),
+                      // ignore: deprecated_member_use
+                      onChanged: (_) {
+                        ref.read(profileListProvider.notifier).setActive(profile.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Switched to "${profile.name}"')),
+                        );
+                      },
+                    ),
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert_rounded,
+                        color: isDark ? AppColors.textSecondaryDark : const Color(0xFF94A3B8),
+                        size: 20,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
+                      onSelected: (val) {
+                        if (val == 'edit') {
+                          _showEditProfileDialog(context, ref, profile);
+                        } else if (val == 'delete') {
+                          _confirmDeleteProfile(context, ref, profile);
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_rounded, size: 18, color: Color(0xFF2563EB)),
+                              SizedBox(width: 10),
+                              Text('Rename Profile', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
+                              SizedBox(width: 10),
+                              Text('Delete Schedule', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                onTap: () {
                   ref.read(profileListProvider.notifier).setActive(profile.id);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Switched to "${profile.name}"')),
-                  );
                 },
               ),
-              onTap: () {
-                ref.read(profileListProvider.notifier).setActive(profile.id);
-              },
             ),
           );
         },

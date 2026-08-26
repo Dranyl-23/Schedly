@@ -57,8 +57,15 @@ Rules:
       normalizedMime = 'image/jpeg';
     }
 
-    // List of verified active model candidates (fastest/cheapest first)
-    final modelNames = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    // List of verified active free-tier Flash models (fastest, high RPM, free)
+    final modelNames = [
+      'gemini-3.6-flash',
+      'gemini-3.7-flash',
+      'gemini-3.5-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+    ];
     String? rawResponseText;
     String lastErrorMessage = '';
 
@@ -96,6 +103,11 @@ Rules:
     }
 
     if (rawResponseText == null || rawResponseText.trim().isEmpty) {
+      if (lastErrorMessage.toLowerCase().contains('quota') ||
+          lastErrorMessage.toLowerCase().contains('rate') ||
+          lastErrorMessage.contains('429')) {
+        throw Exception('Google Gemini free tier rate limit reached (15 scans/min). Please wait ~30 seconds and scan again.');
+      }
       throw Exception('Failed to process image with Gemini AI: ${lastErrorMessage.isNotEmpty ? lastErrorMessage : "No response from AI."}');
     }
 

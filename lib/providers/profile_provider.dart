@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/firestore_sync_service.dart';
 import '../core/database/profile_repository.dart';
 import '../core/database/schedule_repository.dart';
@@ -35,9 +35,14 @@ class ProfileNotifier extends StateNotifier<List<ScheduleProfile>> {
   }
 
   Future<void> deleteProfile(String id) async {
+    final wasActive = state.any((p) => p.id == id && p.isActive);
     await _repo.deleteProfile(id);
     _load();
     _syncService.deleteProfileFromCloud(id);
+
+    if (wasActive && state.isNotEmpty) {
+      await setActive(state.first.id);
+    }
   }
 
   void refreshFromLocal() {

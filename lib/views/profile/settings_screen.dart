@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/page_transitions.dart';
 import '../../providers/sound_settings_provider.dart';
+import '../onboarding/workspace_setup_screen.dart';
 import '../settings/widgets/alarm_tone_picker_modal.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -223,6 +225,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       trailing: const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Section 3: Workspace & Onboarding
+              _buildSectionHeader('WORKSPACE & ONBOARDING', isDark),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.tune_rounded, color: Color(0xFF2563EB), size: 20),
+                      ),
+                      title: const Text(
+                        'Re-launch Workspace Setup',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        'Change school, workplace, region, or alarm ringtone',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SmoothSlideFadeRoute(page: const WorkspaceSetupScreen()),
+                        );
+                      },
                     ),
                   ],
                 ),
