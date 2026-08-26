@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../../models/schedule_category.dart';
@@ -21,8 +22,14 @@ class NotificationService {
       'High-priority alarms and reminders for classes, shifts, and duties';
 
   Future<void> initialize() async {
-    // 1. Initialize timezone database
+    // 1. Initialize timezone database and detect device location
     tz.initializeTimeZones();
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+    } catch (e) {
+      debugPrint('NotificationService: Timezone detection fallback: $e');
+    }
 
     // 2. Android Initialization Settings
     const AndroidInitializationSettings androidSettings =
@@ -92,10 +99,19 @@ class NotificationService {
     return true;
   }
 
-  /// Calculates a deterministic integer ID for notification cancellation
+  /// Calculates a stable, deterministic integer ID for notification cancellation.
+  /// Uses FNV-1a 32-bit hash instead of Dart's hashCode, which is not guaranteed
+  /// to produce the same value across different process runs.
   int _generateNotificationId(String entryId, int dayOfWeek, int leadMinutes) {
-    final combined = '$entryId-$dayOfWeek-$leadMinutes';
-    return combined.hashCode.abs() % 2147483647; // Ensure 32-bit integer range
+    final key = '$entryId-$dayOfWeek-$leadMinutes';
+    // FNV-1a 32-bit hash
+    var hash = 0x811c9dc5;
+    for (final codeUnit in key.codeUnits) {
+      hash ^= codeUnit;
+      hash = (hash * 0x01000193) & 0xFFFFFFFF;
+    }
+    // Ensure positive and within signed 32-bit int range for Android
+    return hash & 0x7FFFFFFF;
   }
 
   /// Schedules all reminders for a schedule entry across all selected weekdays

@@ -1,10 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/auth_provider.dart';
-import '../navigation/main_navigation_shell.dart';
 import 'login_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -34,16 +33,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        SmoothSlideFadeRoute(page: const MainNavigationShell()),
+        SmoothSlideFadeRoute(page: const LoginScreen()),
       );
     }
   }
 
-  void _goToLogin() {
-    Navigator.push(
-      context,
-      SmoothSlideFadeRoute(page: const LoginScreen()),
-    );
+  void _goToLogin() async {
+    await ref.read(authProvider.notifier).completeOnboarding();
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        SmoothSlideFadeRoute(page: const LoginScreen()),
+      );
+    }
   }
 
   @override

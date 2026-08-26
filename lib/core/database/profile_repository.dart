@@ -1,16 +1,22 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../models/schedule_profile.dart';
 
 class ProfileRepository {
   static const String boxName = 'profiles_box';
-  late Box<String> _box;
+  Box<String>? _box;
+
+  Box<String> get _safeBox {
+    if (_box != null && _box!.isOpen) return _box!;
+    if (Hive.isBoxOpen(boxName)) return Hive.box<String>(boxName);
+    throw StateError('ProfileRepository box has not been initialized');
+  }
 
   Future<void> init() async {
     _box = await Hive.openBox<String>(boxName);
 
     // If empty, initialize default profiles from design
-    if (_box.isEmpty) {
+    if (_box!.isEmpty) {
       final defaultProfiles = [
         ScheduleProfile(
           id: 'school-profile-1',
@@ -36,19 +42,22 @@ class ProfileRepository {
       ];
 
       for (final p in defaultProfiles) {
-        await _box.put(p.id, jsonEncode(p.toJson()));
+        await _box!.put(p.id, jsonEncode(p.toJson()));
       }
     }
   }
 
   List<ScheduleProfile> getAllProfiles() {
     final List<ScheduleProfile> list = [];
-    for (final raw in _box.values) {
-      try {
-        final map = jsonDecode(raw) as Map<String, dynamic>;
-        list.add(ScheduleProfile.fromJson(map));
-      } catch (_) {}
-    }
+    try {
+      final box = _safeBox;
+      for (final raw in box.values) {
+        try {
+          final map = jsonDecode(raw) as Map<String, dynamic>;
+          list.add(ScheduleProfile.fromJson(map));
+        } catch (_) {}
+      }
+    } catch (_) {}
     return list;
   }
 
@@ -63,17 +72,18 @@ class ProfileRepository {
 
   Future<void> setActiveProfile(String profileId) async {
     final all = getAllProfiles();
+    final box = _safeBox;
     for (final p in all) {
       final updated = p.copyWith(isActive: p.id == profileId);
-      await _box.put(p.id, jsonEncode(updated.toJson()));
+      await box.put(p.id, jsonEncode(updated.toJson()));
     }
   }
 
   Future<void> saveProfile(ScheduleProfile profile) async {
-    await _box.put(profile.id, jsonEncode(profile.toJson()));
+    await _safeBox.put(profile.id, jsonEncode(profile.toJson()));
   }
 
   Future<void> deleteProfile(String id) async {
-    await _box.delete(id);
+    await _safeBox.delete(id);
   }
 }

@@ -2,17 +2,58 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/schedule_provider.dart';
 import '../onboarding/login_screen.dart';
 import '../profiles/schedule_profiles_view.dart';
-import '../settings/battery_optimization_view.dart';
+import '../schedule/manage_all_schedules_view.dart';
+import 'about_schedly_view.dart';
+import 'help_support_view.dart';
 import 'settings_screen.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
-  void _onLogout(BuildContext context, WidgetRef ref) async {
-    await ref.read(authProvider.notifier).logout();
-    if (context.mounted) {
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  bool _isSyncing = false;
+
+  void _onLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 24),
+            SizedBox(width: 10),
+            Text('Log Out', style: TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: const Text('Are you sure you want to log out of your Schedly account?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).logout();
+      if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -21,219 +62,359 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
+  void _onBackupAndSync() async {
+    final auth = ref.read(authProvider);
+    if (auth.isGuest) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    setState(() => _isSyncing = true);
+    await ref.read(scheduleListProvider.notifier).refreshFromCloud();
+    if (mounted) {
+      setState(() => _isSyncing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Schedules synced with Cloud Backup! ☁️'),
+          backgroundColor: Color(0xFF16A34A),
+        ),
+      );
+    }
+  }
+
+  String _getInitials(String name) {
+    if (name.trim().isEmpty) return 'U';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.substring(0, name.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final auth = ref.watch(authProvider);
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // Hero Blue Profile Banner Header
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text(
+          'More',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          children: [
+            // User Profile Card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                  width: 1,
                 ),
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-              ),
-              child: Column(
-                children: [
-                  // User Avatar
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Image.asset(
-                      'assets/images/mascot.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.person_rounded,
-                        size: 50,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Name
-                  Text(
-                    auth.userName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-
-                  const SizedBox(height: 3),
-
-                  // Email
-                  Text(
-                    auth.userEmail,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-            ),
-          ),
-
-          // Menu List Options
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+              child: Row(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceDark : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
-                      ),
-                    ),
+                  // User Avatar: Google Profile Photo if available, else Initials
+                  _buildUserAvatar(auth, isDark),
+
+                  const SizedBox(width: 14),
+
+                  // Name & Email
+                  Expanded(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildMenuTile(
-                          icon: Icons.person_outline_rounded,
-                          title: 'Account Information',
-                          isDark: isDark,
-                          onTap: () {},
+                        Text(
+                          auth.userName,
+                          style: TextStyle(
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
                         ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          icon: Icons.grid_view_rounded,
-                          title: 'Schedule Profiles',
-                          isDark: isDark,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ScheduleProfilesView(),
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          icon: Icons.notifications_none_rounded,
-                          title: 'Notification Settings',
-                          isDark: isDark,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const BatteryOptimizationView(),
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          icon: Icons.cloud_outlined,
-                          title: 'Backup & Sync',
-                          isDark: isDark,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Cloud sync is active! ☁️')),
-                            );
-                          },
-                        ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          icon: Icons.settings_outlined,
-                          title: 'App Settings',
-                          isDark: isDark,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SettingsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(height: 1),
-                        _buildMenuTile(
-                          icon: Icons.help_outline_rounded,
-                          title: 'Help & Support',
-                          isDark: isDark,
-                          onTap: () {},
+                        const SizedBox(height: 2),
+                        Text(
+                          auth.isGuest ? 'guest@schedly.app' : auth.userEmail,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                          ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Log Out Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton(
-                      onPressed: () => _onLogout(context, ref),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFEF4444), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        'Log Out',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFEF4444),
-                        ),
-                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 16),
+
+            // Grouped Navigation Card matching user mockup with clean subtle dividers
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Item 1: My Profiles
+                  _buildNavTile(
+                    icon: Icons.people_outline_rounded,
+                    title: 'My Profiles',
+                    subtitle: 'Manage different schedules',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ScheduleProfilesView()),
+                      );
+                    },
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 2: My Schedules
+                  _buildNavTile(
+                    icon: Icons.calendar_month_outlined,
+                    title: 'My Schedules',
+                    subtitle: 'View and manage all schedules',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ManageAllSchedulesView()),
+                      );
+                    },
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 3: Settings
+                  _buildNavTile(
+                    icon: Icons.settings_outlined,
+                    title: 'Settings',
+                    subtitle: 'Notifications, reminders, theme',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      );
+                    },
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 4: Backup & Sync
+                  _buildNavTile(
+                    icon: Icons.cloud_outlined,
+                    title: 'Backup & Sync',
+                    subtitle: 'Sync your schedules to cloud',
+                    isDark: isDark,
+                    trailingWidget: _isSyncing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : null,
+                    onTap: _onBackupAndSync,
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 5: Help & Support
+                  _buildNavTile(
+                    icon: Icons.help_outline_rounded,
+                    title: 'Help & Support',
+                    subtitle: 'FAQs and contact support',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HelpSupportView()),
+                      );
+                    },
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 6: About
+                  _buildNavTile(
+                    icon: Icons.info_outline_rounded,
+                    title: 'About',
+                    subtitle: 'Schedly v1.0.0',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AboutSchedlyView()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Log Out Button (if logged in)
+            if (!auth.isGuest) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: _onLogout,
+                  icon: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 18),
+                  label: const Text(
+                    'Log Out',
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    backgroundColor: const Color(0xFFFEF2F2),
+                  ),
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMenuTile({
+  Widget _buildNavTile({
     required IconData icon,
     required String title,
+    required String subtitle,
     required bool isDark,
     required VoidCallback onTap,
+    Widget? trailingWidget,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-      leading: Icon(icon, color: const Color(0xFF2563EB), size: 22),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          icon,
+          color: isDark ? Colors.white70 : const Color(0xFF1E293B),
+          size: 20,
+        ),
+      ),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12,
+          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+        ),
+      ),
+      trailing: trailingWidget ??
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: Color(0xFF94A3B8),
+          ),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildUserAvatar(dynamic auth, bool isDark) {
+    if (!auth.isGuest && auth.userPhotoUrl != null && auth.userPhotoUrl!.isNotEmpty) {
+      return Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFF2563EB), width: 1.5),
+        ),
+        child: ClipOval(
+          child: Image.network(
+            auth.userPhotoUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildInitialsAvatar(auth.userName),
+          ),
+        ),
+      );
+    }
+    return _buildInitialsAvatar(auth.userName);
+  }
+
+  Widget _buildInitialsAvatar(String name) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF0F3BB8),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(name),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubtleDivider(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(left: 68, right: 16),
+      height: 0.8,
+      color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
     );
   }
 }

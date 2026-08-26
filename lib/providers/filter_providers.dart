@@ -30,6 +30,15 @@ final schedulesForSelectedDateProvider = Provider<List<ScheduleEntry>>((ref) {
     ..sort((a, b) => a.startTime.compareTo(b.startTime));
 });
 
+/// Schedules specifically for today's weekday
+final schedulesForTodayProvider = Provider<List<ScheduleEntry>>((ref) {
+  final allSchedules = ref.watch(scheduleListProvider);
+  final weekday = DateTime.now().weekday;
+
+  return allSchedules.where((entry) => entry.daysOfWeek.contains(weekday)).toList()
+    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+});
+
 /// Counts how many schedule entries exist for each weekday (1..7)
 final weeklyScheduleCountsProvider = Provider<Map<int, int>>((ref) {
   final allSchedules = ref.watch(scheduleListProvider);

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../models/schedule_category.dart';
 import '../../models/schedule_entry.dart';
-import '../utils/time_utils.dart';
+import '../config/app_config.dart';
 
 class ScheduleParserService {
   static const String _defaultPrompt = '''
@@ -30,44 +30,78 @@ Rules:
 4. If an entry occurs on multiple days (e.g. Mon, Wed, Fri), group them into a single entry with daysOfWeek: [1, 3, 5].
 ''';
 
-  /// Parses schedule from image bytes using Gemini Multimodal AI
+  /// Parses schedule from image/PDF bytes using Gemini Multimodal AI
   Future<List<ScheduleEntry>> parseImage({
     required Uint8List imageBytes,
     required String mimeType,
     String? apiKey,
   }) async {
-    // If no API key is supplied, return sample realistic parsed data for testing
-    if (apiKey == null || apiKey.trim().isEmpty) {
-      debugPrint('No Gemini API key provided. Using realistic demo parsed schedule data.');
-      return _generateDemoParsedData();
+    final effectiveKey = (apiKey != null && apiKey.trim().isNotEmpty)
+        ? apiKey.trim()
+        : AppConfig.defaultGeminiApiKey;
+
+    if (effectiveKey.isEmpty) {
+      throw Exception('Gemini API key is missing. Please configure GEMINI_API_KEY in your .env or Settings.');
+    }
+
+    final String normalizedMime;
+    if (mimeType.contains('pdf') || mimeType.endsWith('.pdf')) {
+      normalizedMime = 'application/pdf';
+    } else if (mimeType.contains('png')) {
+      normalizedMime = 'image/png';
+    } else if (mimeType.contains('webp')) {
+      normalizedMime = 'image/webp';
+    } else if (mimeType.contains('heic')) {
+      normalizedMime = 'image/heic';
+    } else {
+      normalizedMime = 'image/jpeg';
+    }
+
+    // List of verified active model candidates (fastest/cheapest first)
+    final modelNames = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    String? rawResponseText;
+    String lastErrorMessage = '';
+
+    for (final modelName in modelNames) {
+      try {
+        final model = GenerativeModel(
+          model: modelName,
+          apiKey: effectiveKey,
+          generationConfig: GenerationConfig(
+            responseMimeType: 'application/json',
+            temperature: 0.1,
+          ),
+        );
+
+        final content = [
+          Content.multi([
+            TextPart(_defaultPrompt),
+            DataPart(normalizedMime, imageBytes),
+          ])
+        ];
+
+        final response = await model
+            .generateContent(content)
+            .timeout(const Duration(seconds: 45));
+
+        if (response.text != null && response.text!.trim().isNotEmpty) {
+          rawResponseText = response.text;
+          debugPrint('ScheduleParserService: Successfully extracted via $modelName');
+          break;
+        }
+      } catch (e) {
+        lastErrorMessage = e.toString();
+        debugPrint('ScheduleParserService: Model $modelName failed: $e. Trying next candidate...');
+      }
+    }
+
+    if (rawResponseText == null || rawResponseText.trim().isEmpty) {
+      throw Exception('Failed to process image with Gemini AI: ${lastErrorMessage.isNotEmpty ? lastErrorMessage : "No response from AI."}');
     }
 
     try {
-      final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: apiKey.trim(),
-        generationConfig: GenerationConfig(
-          responseMimeType: 'application/json',
-          temperature: 0.1,
-        ),
-      );
-
-      final content = [
-        Content.multi([
-          TextPart(_defaultPrompt),
-          DataPart(mimeType, imageBytes),
-        ])
-      ];
-
-      final response = await model.generateContent(content);
-      final rawText = response.text;
-
-      if (rawText == null || rawText.trim().isEmpty) {
-        throw Exception('AI returned an empty response. Please try a clearer screenshot.');
-      }
-
       // Clean response of any accidental markdown backticks
-      String cleanedJson = rawText.trim();
+      String cleanedJson = rawResponseText.trim();
       if (cleanedJson.startsWith('```json')) {
         cleanedJson = cleanedJson.replaceFirst('```json', '');
       }
@@ -81,7 +115,7 @@ Rules:
 
       final dynamic decoded = jsonDecode(cleanedJson);
       if (decoded is! List) {
-        throw Exception('Expected JSON array of schedules but received a single object.');
+        throw Exception('AI output was not in the expected schedule format.');
       }
 
       final List<ScheduleEntry> parsedEntries = [];
@@ -104,78 +138,37 @@ Rules:
           }
           if (days.isEmpty) days.add(DateTime.now().weekday);
 
-          final startTime = item['startTime']?.toString() ?? '08:00';
-          final endTime = item['endTime']?.toString() ?? '09:00';
-          final spansNextDay = item['spansNextDay'] == true ||
-              TimeUtils.checkSpansOvernight(startTime, endTime);
+          final rawStart = item['startTime']?.toString() ?? '08:00';
+          final rawEnd = item['endTime']?.toString() ?? '09:30';
+          final spansNextDay = item['spansNextDay'] as bool? ?? false;
+          final location = item['location']?.toString();
+          final notes = item['notes']?.toString();
 
           parsedEntries.add(
             ScheduleEntry(
               title: title,
               category: category,
               daysOfWeek: days,
-              startTime: startTime,
-              endTime: endTime,
+              startTime: rawStart,
+              endTime: rawEnd,
               spansNextDay: spansNextDay,
-              location: item['location']?.toString(),
-              notes: item['notes']?.toString(),
-              reminders: [category.defaultReminderLeadMinutes],
+              location: location,
+              notes: notes,
+              reminders: [15],
+              isActive: true,
             ),
           );
         }
       }
 
+      if (parsedEntries.isEmpty) {
+        throw Exception('No schedules could be extracted from this image. Please ensure the timetable is clearly visible.');
+      }
+
       return parsedEntries;
     } catch (e) {
-      debugPrint('Gemini parsing error: $e');
-      rethrow;
+      if (e is Exception) rethrow;
+      throw Exception('Failed to decode extracted schedules: $e');
     }
-  }
-
-  /// Demo mock parsed entries for instant offline UI testing
-  static List<ScheduleEntry> _generateDemoParsedData() {
-    return [
-      ScheduleEntry(
-        title: 'IT 211 - Data Structures & Algorithms',
-        category: ScheduleCategory.classSchedule,
-        daysOfWeek: [1, 3, 5], // Mon, Wed, Fri
-        startTime: '08:30',
-        endTime: '10:00',
-        location: 'Computer Lab 3 - Main Bldg',
-        notes: 'Prof. Garcia • Bring Flash Drive',
-        reminders: [15],
-      ),
-      ScheduleEntry(
-        title: 'ENG 102 - Purposive Communication',
-        category: ScheduleCategory.classSchedule,
-        daysOfWeek: [2, 4], // Tue, Thu
-        startTime: '10:30',
-        endTime: '12:00',
-        location: 'Room 402 - Arts Bldg',
-        notes: 'Speech presentation weekly',
-        reminders: [15],
-      ),
-      ScheduleEntry(
-        title: 'Closing Shift - Cashier & Inventory',
-        category: ScheduleCategory.workShift,
-        daysOfWeek: [5, 6], // Fri, Sat
-        startTime: '16:00',
-        endTime: '23:00',
-        location: 'Branch Station 2',
-        notes: 'Supervisor: Mark • Wear black apron',
-        reminders: [60, 15],
-      ),
-      ScheduleEntry(
-        title: 'Overnight Duty',
-        category: ScheduleCategory.duty,
-        daysOfWeek: [7], // Sun
-        startTime: '22:00',
-        endTime: '06:00',
-        spansNextDay: true,
-        location: 'Command Center / Desk',
-        notes: 'Logbook turnover at 05:45 AM',
-        reminders: [60],
-      ),
-    ];
   }
 }

@@ -1,144 +1,402 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
-import '../settings/battery_optimization_view.dart';
-import 'about_schedly_view.dart';
+import '../../providers/sound_settings_provider.dart';
+import '../settings/widgets/alarm_tone_picker_modal.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  int _defaultReminderLead = 15;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text(
+          'Settings',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          _buildSettingsGroup(
-            isDark: isDark,
-            items: [
-              _buildSettingTile(
-                icon: Icons.tune_rounded,
-                title: 'General',
-                subtitle: 'App preferences & time format',
-                isDark: isDark,
-                onTap: () {},
-              ),
-              _buildSettingTile(
-                icon: Icons.notifications_none_rounded,
-                title: 'Notifications',
-                subtitle: 'Manage background reminder alarms',
-                isDark: isDark,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const BatteryOptimizationView(),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Section 1: Alarms & Notifications
+              _buildSectionHeader('ALARMS & NOTIFICATIONS', isDark),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  );
-                },
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.timelapse_rounded, color: Color(0xFF8B5CF6), size: 20),
+                      ),
+                      title: const Text(
+                        'Default Reminder Lead Time',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        '$_defaultReminderLead minutes before scheduled event',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _formatMinutesLabel(_defaultReminderLead),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Color(0xFF2563EB)),
+                          ],
+                        ),
+                      ),
+                      onTap: () => _showReminderLeadPicker(context, isDark),
+                    ),
+                    _buildSubtleDivider(isDark),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.music_note_rounded, color: Color(0xFFF59E0B), size: 20),
+                      ),
+                      title: const Text(
+                        'Alarm Sound & Tone',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        ref.watch(soundSettingsProvider).selectedTone.name,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              ref.watch(soundSettingsProvider).selectedTone.name,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Color(0xFF2563EB)),
+                          ],
+                        ),
+                      ),
+                      onTap: () => AlarmTonePickerModal.show(context),
+                    ),
+                  ],
+                ),
               ),
-              _buildSettingTile(
-                icon: Icons.cloud_sync_outlined,
-                title: 'Backup & Sync',
-                subtitle: 'Sync your schedules to cloud',
-                isDark: isDark,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cloud sync enabled! ☁️')),
-                  );
-                },
+
+              const SizedBox(height: 24),
+
+              // Section 2: Display & Calendar Preferences
+              _buildSectionHeader('DISPLAY & TIMETABLE PREFERENCES', isDark),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.schedule_rounded, color: Color(0xFFF59E0B), size: 20),
+                      ),
+                      title: const Text(
+                        'Time Display Format',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        '12-Hour AM/PM (e.g. 8:30 AM – 10:00 AM)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
+                    ),
+                    _buildSubtleDivider(isDark),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.calendar_view_week_rounded, color: Color(0xFF3B82F6), size: 20),
+                      ),
+                      title: const Text(
+                        'First Day of Week',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        'Monday',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB), size: 20),
+                    ),
+                  ],
+                ),
               ),
-              _buildSettingTile(
-                icon: Icons.palette_outlined,
-                title: 'Appearance',
-                subtitle: isDark ? 'Dark Mode' : 'Light Mode',
-                isDark: isDark,
-                onTap: () {},
-              ),
-              _buildSettingTile(
-                icon: Icons.language_rounded,
-                title: 'Language',
-                subtitle: 'English (US)',
-                isDark: isDark,
-                onTap: () {},
-              ),
-              _buildSettingTile(
-                icon: Icons.info_outline_rounded,
-                title: 'About Schedly',
-                subtitle: 'Version 1.0.0',
-                isDark: isDark,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AboutSchedlyView()),
-                  );
-                },
-              ),
+
+              const SizedBox(height: 30),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSettingsGroup({
-    required List<Widget> items,
-    required bool isDark,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Column(
-        children: items,
-      ),
-    );
-  }
-
-  Widget _buildSettingTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: const Color(0xFF2563EB), size: 20),
-      ),
-      title: Text(
+  Widget _buildSectionHeader(String title, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
-      ),
-      subtitle: Text(
-        subtitle,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.8,
           color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
         ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFF94A3B8)),
-      onTap: onTap,
+    );
+  }
+
+  Widget _buildSubtleDivider(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(left: 56, right: 16),
+      height: 0.8,
+      color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+    );
+  }
+
+  String _formatMinutesLabel(int minutes) {
+    if (minutes >= 60) {
+      final hours = minutes ~/ 60;
+      return '$hours hr${hours > 1 ? 's' : ''}';
+    }
+    return '$minutes min';
+  }
+
+  void _showReminderLeadPicker(BuildContext context, bool isDark) {
+    final options = [
+      {'val': 5, 'label': '5 minutes before', 'desc': 'Quick alert right before'},
+      {'val': 10, 'label': '10 minutes before', 'desc': 'Standard preparation time'},
+      {'val': 15, 'label': '15 minutes before', 'desc': 'Recommended for classes & duties'},
+      {'val': 30, 'label': '30 minutes before', 'desc': 'Plenty of travel & prep time'},
+      {'val': 60, 'label': '1 hour before', 'desc': 'Early heads-up notification'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Default Reminder Lead Time',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Set how early alarm notifications ring before your schedule starts',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...options.map((opt) {
+                    final val = opt['val'] as int;
+                    final isSelected = _defaultReminderLead == val;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => _defaultReminderLead = val);
+                          Navigator.pop(ctx);
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? const Color(0xFF2563EB).withValues(alpha: 0.1)
+                                : (isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC)),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF2563EB)
+                                  : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      opt['label'] as String,
+                                      style: TextStyle(
+                                        fontSize: 14.5,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                        color: isSelected
+                                            ? const Color(0xFF2563EB)
+                                            : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      opt['desc'] as String,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,10 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
+import 'login_screen.dart';
 import 'onboarding_screen.dart';
+import 'workspace_setup_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -52,8 +55,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   void _navigateToNext() {
     final auth = ref.read(authProvider);
-    final targetScreen =
-        auth.isLoggedIn ? const MainNavigationShell() : const OnboardingScreen();
+    final isSetupDone = ref.read(userSetupProvider).isSetupCompleted;
+    final Widget targetScreen;
+    if (auth.isLoggedIn) {
+      targetScreen = isSetupDone ? const MainNavigationShell() : const WorkspaceSetupScreen();
+    } else if (auth.isOnboarded) {
+      targetScreen = const LoginScreen();
+    } else {
+      targetScreen = const OnboardingScreen();
+    }
 
     Navigator.pushReplacement(
       context,

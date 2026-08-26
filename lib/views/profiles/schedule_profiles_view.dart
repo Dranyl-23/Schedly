@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
@@ -11,68 +11,338 @@ class ScheduleProfilesView extends ConsumerWidget {
   void _showCreateProfileDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     String selectedType = 'school';
+    String selectedHex = '#2563EB';
 
-    showDialog(
+    final typeOptions = [
+      {
+        'type': 'school',
+        'title': 'School / University',
+        'desc': 'Class timetables, lectures & lab sessions',
+        'icon': Icons.school_rounded,
+        'color': const Color(0xFF2563EB),
+        'hex': '#2563EB',
+      },
+      {
+        'type': 'work',
+        'title': 'Work / Job Shift',
+        'desc': 'Office hours, part-time shifts & meetings',
+        'icon': Icons.work_rounded,
+        'color': const Color(0xFFF59E0B),
+        'hex': '#F59E0B',
+      },
+      {
+        'type': 'duty',
+        'title': 'Duty Roster',
+        'desc': 'Hospital shifts, clinical duties & rotations',
+        'icon': Icons.badge_rounded,
+        'color': const Color(0xFF10B981),
+        'hex': '#10B981',
+      },
+      {
+        'type': 'custom',
+        'title': 'Custom / Personal',
+        'desc': 'Fitness, study routines & personal habits',
+        'icon': Icons.star_rounded,
+        'color': const Color(0xFF8B5CF6),
+        'hex': '#8B5CF6',
+      },
+    ];
+
+    showModalBottomSheet(
       context: context,
-      builder: (context) {
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('New Schedule Profile'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Profile Name',
-                      hintText: 'e.g. 2nd Semester Classes, Night Shift',
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+                ),
+                padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Drag handle
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4.5,
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Header Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'New Schedule Profile',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Create a separate timetable for school, duty, or work',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              onPressed: () => Navigator.pop(ctx),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // Profile Name Field
+                        Text(
+                          'PROFILE NAME',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: nameController,
+                            autofocus: false,
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                            decoration: InputDecoration(
+                              hintText: 'e.g. 2nd Semester Classes, Hospital Duty',
+                              hintStyle: TextStyle(
+                                fontSize: 13.5,
+                                color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.bookmark_outline_rounded,
+                                size: 20,
+                                color: Color(0xFF2563EB),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Profile Type Selection
+                        Text(
+                          'SELECT PROFILE CATEGORY',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // 4 Option Cards
+                        ...typeOptions.map((opt) {
+                          final typeKey = opt['type'] as String;
+                          final isSelected = selectedType == typeKey;
+                          final optColor = opt['color'] as Color;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: InkWell(
+                              onTap: () {
+                                setSheetState(() {
+                                  selectedType = typeKey;
+                                  selectedHex = opt['hex'] as String;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(16),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 160),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? optColor.withValues(alpha: 0.09)
+                                      : (isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC)),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? optColor
+                                        : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                                    width: isSelected ? 1.6 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: optColor.withValues(alpha: 0.14),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        opt['icon'] as IconData,
+                                        color: optColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            opt['title'] as String,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                              color: isSelected
+                                                  ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                                                  : (isDark ? Colors.white70 : const Color(0xFF334155)),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            opt['desc'] as String,
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(
+                                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                      color: isSelected ? optColor : const Color(0xFFCBD5E1),
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+
+                        const SizedBox(height: 18),
+
+                        // Create Button
+                        Container(
+                          width: double.infinity,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final name = nameController.text.trim();
+                              if (name.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter a profile name'),
+                                    backgroundColor: Color(0xFFDC2626),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              final newProfile = ScheduleProfile(
+                                name: name,
+                                type: selectedType,
+                                colorHex: selectedHex,
+                                isActive: false,
+                              );
+                              await ref.read(profileListProvider.notifier).addProfile(newProfile);
+                              if (context.mounted) {
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Profile "$name" created successfully! 🎉'),
+                                    backgroundColor: const Color(0xFF10B981),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Create Profile',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedType,
-                    decoration: const InputDecoration(labelText: 'Profile Type'),
-                    items: const [
-                      DropdownMenuItem(value: 'school', child: Text('School / University')),
-                      DropdownMenuItem(value: 'work', child: Text('Work / Job Shift')),
-                      DropdownMenuItem(value: 'duty', child: Text('Duty Roster')),
-                      DropdownMenuItem(value: 'custom', child: Text('Custom / Personal')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => selectedType = val);
-                      }
-                    },
-                  ),
-                ],
+                ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final name = nameController.text.trim();
-                    if (name.isEmpty) return;
-
-                    final newProfile = ScheduleProfile(
-                      name: name,
-                      type: selectedType,
-                      isActive: false,
-                    );
-                    await ref.read(profileListProvider.notifier).addProfile(newProfile);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Profile "$name" created!')),
-                      );
-                    }
-                  },
-                  child: const Text('Create'),
-                ),
-              ],
             );
           },
         );
@@ -89,35 +359,44 @@ class ScheduleProfilesView extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Schedules'),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton.icon(
-              onPressed: () => _showCreateProfileDialog(context, ref),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'New Schedule Profile',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'New Schedule Profile',
+            onPressed: () => _showCreateProfileDialog(context, ref),
           ),
-        ),
+        ],
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: profiles.length,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        itemCount: profiles.length + 1, // +1 for the Add New Profile button at the end
         itemBuilder: (context, index) {
+          if (index == profiles.length) {
+            // End Action Card: Add New Profile
+            return Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: () => _showCreateProfileDialog(context, ref),
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'New Schedule Profile',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFCBD5E1),
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            );
+          }
+
           final profile = profiles[index];
           final isSelected = profile.isActive;
 

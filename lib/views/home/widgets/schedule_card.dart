@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
 import '../../../models/schedule_category.dart';
 import '../../../models/schedule_entry.dart';
+import '../../calendar/widgets/weekly_timetable_grid.dart';
 
 class ScheduleCard extends StatelessWidget {
   final ScheduleEntry entry;
@@ -18,287 +19,145 @@ class ScheduleCard extends StatelessWidget {
     this.onDelete,
   });
 
+  IconData _getIconForSubject(String title, ScheduleCategory category) {
+    final lower = title.toLowerCase();
+    if (lower.contains('program') || lower.contains('code') || lower.contains('cs') || lower.contains('it') || lower.contains('software')) {
+      return Icons.computer_rounded;
+    }
+    if (lower.contains('math') || lower.contains('calc') || lower.contains('stat') || lower.contains('algebra')) {
+      return Icons.calculate_rounded;
+    }
+    if (lower.contains('data') || lower.contains('db') || lower.contains('sql') || lower.contains('network')) {
+      return Icons.storage_rounded;
+    }
+    if (lower.contains('free') || lower.contains('break') || lower.contains('lunch') || lower.contains('vacant')) {
+      return Icons.coffee_rounded;
+    }
+    if (lower.contains('duty') || lower.contains('medic') || lower.contains('nurs') || lower.contains('hospital')) {
+      return Icons.medical_services_rounded;
+    }
+    return category.icon;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final categoryColor = entry.category.color;
-    final durationText = TimeUtils.calculateDuration(
-      entry.startTime,
-      entry.endTime,
-      spansNextDay: entry.spansNextDay,
-    );
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = TimetableTheme.forTitle(entry.title, isDark);
+    final subjectIcon = _getIconForSubject(entry.title, entry.category);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: entry.isActive
-              ? (isDark ? AppColors.borderDark : AppColors.borderLight)
-              : (isDark ? Colors.white10 : Colors.black12),
+          color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+          width: 1,
         ),
-        boxShadow: entry.isActive
-            ? [
-                BoxShadow(
-                  // ignore: deprecated_member_use
-                  color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.025),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Opacity(
-            opacity: entry.isActive ? 1.0 : 0.5,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: Category pill + Time Range + Active switch
-                  Row(
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                // Subject Icon Box
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: palette.background,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: palette.border, width: 1.2),
+                  ),
+                  child: Icon(
+                    subjectIcon,
+                    color: palette.primary,
+                    size: 24,
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                // Connected Color Dot
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: palette.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                // Subject Title, Time, and Location
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Category Tag
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
-                          color: categoryColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
+                      Text(
+                        entry.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '${TimeUtils.formatTo12Hour(entry.startTime)} – ${TimeUtils.formatTo12Hour(entry.endTime)}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      if (entry.location != null && entry.location!.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
                           children: [
-                            Icon(entry.category.icon, size: 14, color: categoryColor),
-                            const SizedBox(width: 5),
-                            Text(
-                              entry.category.shortLabel,
-                              style: TextStyle(
-                                color: categoryColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                            Icon(Icons.location_on_outlined, size: 13, color: palette.primary),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                entry.location!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // Duration Badge
-                      if (durationText.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            // ignore: deprecated_member_use
-                            color: isDark ? Colors.white10 : Colors.black.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            durationText,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                            ),
-                          ),
-                        ),
-
-                      const Spacer(),
-
-                      // Active Switch
-                      Transform.scale(
-                        scale: 0.8,
-                        child: Switch.adaptive(
-                          value: entry.isActive,
-                          activeThumbColor: AppColors.primary,
-                          onChanged: onToggleActive,
-                        ),
-                      ),
-
-                      // More Actions Menu
-                      PopupMenuButton<String>(
-                        icon: Icon(
-                          Icons.more_vert_rounded,
-                          size: 18,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        onSelected: (val) {
-                          if (val == 'edit') onTap?.call();
-                          if (val == 'delete') onDelete?.call();
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit_outlined, size: 18),
-                                SizedBox(width: 10),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                                SizedBox(width: 10),
-                                Text('Delete', style: TextStyle(color: AppColors.error)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // Schedule Title
-                  Text(
-                    entry.title,
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Time block with AM/PM
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 16,
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${TimeUtils.formatTo12Hour(entry.startTime)} — ${TimeUtils.formatTo12Hour(entry.endTime)}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                        ),
-                      ),
-                      if (entry.spansNextDay) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            // ignore: deprecated_member_use
-                            color: AppColors.warning.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            '+1 day',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ),
                       ],
                     ],
                   ),
+                ),
 
-                  // Location & Reminder chips
-                  if ((entry.location != null && entry.location!.isNotEmpty) ||
-                      entry.reminders.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        if (entry.location != null && entry.location!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // ignore: deprecated_member_use
-                              color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.location_on_outlined,
-                                  size: 13,
-                                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  entry.location!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        if (entry.reminders.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              // ignore: deprecated_member_use
-                              color: AppColors.primary.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.alarm_on_rounded,
-                                  size: 13,
-                                  color: AppColors.primary,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  TimeUtils.formatLeadMinutes(entry.reminders.first),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-
-                  // Notes section
-                  if (entry.notes != null && entry.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      entry.notes!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+                // Trailing Chevron Arrow
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: Color(0xFF94A3B8),
+                ),
+              ],
             ),
           ),
         ),

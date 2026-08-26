@@ -1,0 +1,36 @@
+﻿import urllib.request
+import json
+import os
+
+headers = {'User-Agent': 'SchedlyAcademicApp/1.0 (contact@schedly.app)'}
+
+def download_commons_file(title, out_name):
+    url = f'https://commons.wikimedia.org/w/api.php?action=query&titles={urllib.parse.quote(title)}&prop=imageinfo&iiprop=url&format=json'
+    req = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        data = json.loads(resp.read().decode('utf-8'))
+        pages = data['query']['pages']
+        for pid in pages:
+            if 'imageinfo' in pages[pid]:
+                img_url = pages[pid]['imageinfo'][0]['url']
+                print(f'Fetching {title} from {img_url}...')
+                img_req = urllib.request.Request(img_url, headers=headers)
+                out_path = os.path.join(r'c:\Users\Alfie Lynard\OneDrive\Desktop\archive\Scheduler\assets\logos', out_name)
+                with urllib.request.urlopen(img_req, timeout=15) as img_resp, open(out_path, 'wb') as f:
+                    f.write(img_resp.read())
+                print(f'SAVED: {out_name} ({os.path.getsize(out_path)} bytes)')
+                return True
+    return False
+
+files = {
+    'File:SM Supermalls logo.svg': 'sm.svg',
+    'File:Gaisano Grand Malls logo.svg': 'gmall.svg',
+    'File:Southern Philippines Medical Center seal.png': 'spmc.png',
+    'File:McDonald\'s Golden Arches.svg': 'mcdo.svg',
+}
+
+for title, out_name in files.items():
+    try:
+        download_commons_file(title, out_name)
+    except Exception as e:
+        print(f'Error {title}: {e}')

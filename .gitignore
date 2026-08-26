@@ -46,3 +46,11 @@ app.*.map.json
 .gradle/
 **/android/.gradle/
 **/android/local.properties
+
+# Environment Variables (Secrets)
+.env
+
+# Firebase Client Config (Secrets)
+android/app/google-services.json
+lib/firebase_options.dart
+

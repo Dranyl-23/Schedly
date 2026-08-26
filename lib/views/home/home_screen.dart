@@ -2,224 +2,166 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/notifications/notification_service.dart';
-import '../../core/utils/time_utils.dart';
-import '../../models/schedule_category.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/filter_providers.dart';
-import '../../providers/schedule_provider.dart';
-import '../scanner/scanner_landing_view.dart';
-import '../schedule/add_edit_schedule_view.dart';
-import '../settings/battery_optimization_view.dart';
+import '../../providers/notification_center_provider.dart';
+import '../navigation/main_navigation_shell.dart';
+import 'notifications_screen.dart';
+import 'schedule_detail_view.dart';
 import 'widgets/schedule_card.dart';
+import 'widgets/schedule_summary_modal.dart';
 import 'widgets/upcoming_banner.dart';
-import 'widgets/week_overview_bar.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  void _showAddOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Add Schedule',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
-                    color: AppColors.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.document_scanner_rounded, color: AppColors.primary),
-                ),
-                title: const Text(
-                  'Scan Schedule Screenshot',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text('AI extracts timetable from photo'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ScannerLandingView()),
-                  );
-                },
-              ),
-              const Divider(height: 20),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
-                    color: AppColors.categoryWork.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.edit_calendar_rounded, color: AppColors.categoryWork),
-                ),
-                title: const Text(
-                  'Create Schedule Manually',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: const Text('Enter subject or shift details by hand'),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AddEditScheduleView()),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        );
-      },
-    );
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final auth = ref.watch(authProvider);
+    final schedules = ref.watch(schedulesForTodayProvider);
+    final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
-    final selectedDate = ref.watch(selectedDateProvider);
-    final selectedCategory = ref.watch(selectedCategoryFilterProvider);
-    final schedules = ref.watch(schedulesForSelectedDateProvider);
-    final isToday = DateTime.now().year == selectedDate.year &&
-        DateTime.now().month == selectedDate.month &&
-        DateTime.now().day == selectedDate.day;
-
-    final formattedDateHeader = isToday
-        ? 'Today, ${DateFormat('MMM d').format(selectedDate)}'
-        : '${TimeUtils.getWeekdayFull(selectedDate.weekday)}, ${DateFormat('MMM d').format(selectedDate)}';
+    // Extract first name (e.g. "Alfie" or "Dranyl")
+    final firstName = auth.userName.trim().split(' ').first;
+    final greeting = '${_getGreeting()}, $firstName! 👋';
+    final fullFormattedDate = DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now());
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Schedule Scanner',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-            ),
-            Text(
-              formattedDateHeader,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-              ),
-            ),
-          ],
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded, size: 24),
+          tooltip: 'Schedule Insights & Export',
+          onPressed: () {
+            ScheduleSummaryModal.show(context);
+          },
         ),
+        title: const Text(
+          'Schedly',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1E3A8A),
+            letterSpacing: -0.3,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
         actions: [
           IconButton(
-            tooltip: 'Alarm Battery Setup Guide',
-            icon: const Icon(Icons.battery_alert_rounded),
+            tooltip: 'Notifications',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const BatteryOptimizationView()),
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
               );
             },
-          ),
-          IconButton(
-            tooltip: 'Quick Test Notification',
-            icon: const Icon(Icons.notifications_active_outlined),
-            onPressed: () async {
-              await NotificationService().showInstantNotification(
-                title: '⏰ Schedule Scanner Test',
-                body: 'Your alarm notifications are working perfectly!',
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Test notification sent! 🔔')),
-                );
-              }
-            },
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_none_rounded, size: 24),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddOptions(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add / Scan', style: TextStyle(fontWeight: FontWeight.w700)),
-      ),
       body: CustomScrollView(
         slivers: [
-          // Hero Next-Up Banner
+          // Greeting & Date Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    greeting,
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    fullFormattedDate,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Hero Next Schedule Banner
           const SliverToBoxAdapter(
             child: UpcomingBanner(),
           ),
 
-          // 7-day strip
           const SliverToBoxAdapter(
-            child: WeekOverviewBar(),
+            child: SizedBox(height: 14),
           ),
 
-          // Filter category chips
+          // TODAY'S SCHEDULE Section Header
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('All'),
-                      selected: selectedCategory == null,
-                      onSelected: (_) {
-                        ref.read(selectedCategoryFilterProvider.notifier).state = null;
-                      },
-                      selectedColor: AppColors.primary,
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: selectedCategory == null ? Colors.white : null,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "TODAY'S SCHEDULE",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                      color: Color(0xFF1E3A8A),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      ref.read(navigationIndexProvider.notifier).state = 1; // Switch to Calendar / Timetable tab
+                    },
+                    child: const Text(
+                      'View all',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF2563EB),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    ...ScheduleCategory.values.map((cat) {
-                      final isSelected = selectedCategory == cat;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: FilterChip(
-                          avatar: Icon(cat.icon, size: 14, color: isSelected ? Colors.white : cat.color),
-                          label: Text(cat.shortLabel),
-                          selected: isSelected,
-                          selectedColor: cat.color,
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : null,
-                          ),
-                          onSelected: (selected) {
-                            ref.read(selectedCategoryFilterProvider.notifier).state =
-                                selected ? cat : null;
-                          },
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -237,35 +179,32 @@ class HomeScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.08),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          Icons.event_busy_rounded,
+                        child: const Icon(
+                          Icons.event_available_rounded,
                           size: 48,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          color: Color(0xFF2563EB),
                         ),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No schedules for ${TimeUtils.getWeekdayFull(selectedDate.weekday)}',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        'No schedules scheduled for today',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Tap the button below to scan a screenshot or add an event manually.',
+                        'Tap "+" below to scan or add classes & shifts.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      OutlinedButton.icon(
-                        onPressed: () => _showAddOptions(context),
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Add Schedule'),
                       ),
                     ],
                   ),
@@ -274,7 +213,7 @@ class HomeScreen extends ConsumerWidget {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
+              padding: const EdgeInsets.only(bottom: 80),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -285,24 +224,7 @@ class HomeScreen extends ConsumerWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => AddEditScheduleView(initialEntry: entry),
-                          ),
-                        );
-                      },
-                      onToggleActive: (val) {
-                        ref.read(scheduleListProvider.notifier).toggleActive(entry.id);
-                      },
-                      onDelete: () {
-                        ref.read(scheduleListProvider.notifier).deleteSchedule(entry);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Deleted "${entry.title}"'),
-                            action: SnackBarAction(
-                              label: 'Undo',
-                              onPressed: () {
-                                ref.read(scheduleListProvider.notifier).addSchedule(entry);
-                              },
-                            ),
+                            builder: (_) => ScheduleDetailView(entry: entry),
                           ),
                         );
                       },
