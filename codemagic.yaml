@@ -65,6 +65,7 @@
                      -configuration Release \
                      -sdk iphoneos \
                      -destination 'generic/platform=iOS' \
+                     -derivedDataPath build/ios \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
@@ -72,16 +73,14 @@
                      clean build
       - name: Package iOS Release IPA
         script: |
-          mkdir -p build/ios/iphoneos/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
-          cd build/ios/iphoneos
-          zip -r Reminda.ipa Payload
-          mkdir -p "$CM_BUILD_DIR/build/ios/ipa"
-          cp Reminda.ipa "$CM_BUILD_DIR/build/ios/ipa/"
+          mkdir -p build/ios/Payload
+          mkdir -p build/ios/ipa
+          cp -r build/ios/Build/Products/Release-iphoneos/Runner.app build/ios/Payload/
+          cd build/ios
+          zip -r "$CM_BUILD_DIR/build/ios/ipa/Reminda.ipa" Payload
           cd "$CM_BUILD_DIR"
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/iphoneos/Reminda.ipa
     publishing:
       email:
         recipients:
