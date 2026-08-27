@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "625588239560",
+    "project_id": "schedly-b4b8d",
+    "storage_bucket": "schedly-b4b8d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:625588239560:android:71c8f503c86b1644f679fd",
+        "android_client_info": {
+          "package_name": "com.dranyl.schedulescanner.schedule_scanner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "625588239560-kek4l3cffcepo7psnad298saa7nrbq6h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dranyl.schedulescanner.schedule_scanner",
+            "certificate_hash": "80b8888a59d64673b8cca5b1fa5980bc41749a4e"
+          }
+        },
+        {
+          "client_id": "625588239560-nuq9gupsj5i23lstllapoqbo365dd585.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtQrOZBnRO6WRNygY3nCpZGl_qg2IeSqA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "625588239560-nuq9gupsj5i23lstllapoqbo365dd585.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "625588239560-f6nmqcf2fpojehf5rp226ngipp11ahn1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dranyl.schedulescanner.scheduleScanner"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
