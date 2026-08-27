@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/time_utils.dart';
@@ -97,7 +97,7 @@ class _ParsedPreviewViewState extends ConsumerState<ParsedPreviewView> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Successfully added ${_items.length} schedule entries! 🎉'),
+          content: Text('Successfully added ${_items.length} schedule entries!'),
           backgroundColor: AppColors.success,
         ),
       );

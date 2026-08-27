@@ -54,52 +54,69 @@ class FirestoreSyncService {
     if (uid == null) return;
 
     try {
-      // 1. Sync Schedules
+      // 0. Ensure user root document exists so it shows visibly in Firestore Console
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'displayName': user.displayName ?? 'User',
+          'email': user.email ?? '',
+          'lastSyncAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      // 1. Sync Schedules (Smart Two-Way Merge)
       final schedRef = _userSchedulesRef;
       if (schedRef != null) {
-        final snapshot = await schedRef.get().timeout(const Duration(seconds: 3));
+        final snapshot = await schedRef.get().timeout(const Duration(seconds: 10));
         final localSchedules = _scheduleRepo.getAllSchedules();
 
-        if (snapshot.docs.isEmpty && localSchedules.isNotEmpty) {
-          // Cloud is empty, push local demo/existing schedules to cloud
-          debugPrint('FirestoreSyncService: Uploading local schedules to empty cloud...');
-          await syncBatchSchedulesToCloud(localSchedules);
-        } else if (snapshot.docs.isNotEmpty) {
-          // Cloud has data, merge into local Hive
-          final cloudEntries = <ScheduleEntry>[];
-          for (final doc in snapshot.docs) {
-            try {
-              cloudEntries.add(ScheduleEntry.fromJson(doc.data()));
-            } catch (e) {
-              debugPrint('Failed to parse cloud schedule doc ${doc.id}: $e');
-            }
+        final cloudEntries = <ScheduleEntry>[];
+        final cloudIds = <String>{};
+
+        for (final doc in snapshot.docs) {
+          try {
+            final entry = ScheduleEntry.fromJson(doc.data());
+            cloudEntries.add(entry);
+            cloudIds.add(entry.id);
+          } catch (e) {
+            debugPrint('Failed to parse cloud schedule doc ${doc.id}: $e');
           }
-          if (cloudEntries.isNotEmpty) {
-            await _scheduleRepo.saveBatch(cloudEntries);
-          }
+        }
+
+        // A. Merge cloud entries into local Hive
+        if (cloudEntries.isNotEmpty) {
+          await _scheduleRepo.saveBatch(cloudEntries);
+        }
+
+        // B. Upload any local entries that are missing in the cloud (e.g. from Guest or Offline mode)
+        final missingInCloud = localSchedules.where((e) => !cloudIds.contains(e.id)).toList();
+        if (missingInCloud.isNotEmpty) {
+          debugPrint('FirestoreSyncService: Uploading ${missingInCloud.length} offline/guest schedules to cloud...');
+          await syncBatchSchedulesToCloud(missingInCloud);
         }
       }
 
-      // 2. Sync Profiles
+      // 2. Sync Profiles (Smart Two-Way Merge)
       final profRef = _userProfilesRef;
       if (profRef != null) {
-        final snapshot = await profRef.get().timeout(const Duration(seconds: 3));
+        final snapshot = await profRef.get().timeout(const Duration(seconds: 10));
         final localProfiles = _profileRepo.getAllProfiles();
+        final cloudProfileIds = <String>{};
 
-        if (snapshot.docs.isEmpty && localProfiles.isNotEmpty) {
-          debugPrint('FirestoreSyncService: Uploading local profiles to empty cloud...');
-          for (final p in localProfiles) {
-            await syncProfileToCloud(p);
+        for (final doc in snapshot.docs) {
+          try {
+            final profile = ScheduleProfile.fromJson(doc.data());
+            cloudProfileIds.add(profile.id);
+            await _profileRepo.saveProfile(profile);
+          } catch (e) {
+            debugPrint('Failed to parse cloud profile doc ${doc.id}: $e');
           }
-        } else if (snapshot.docs.isNotEmpty) {
-          for (final doc in snapshot.docs) {
-            try {
-              final profile = ScheduleProfile.fromJson(doc.data());
-              await _profileRepo.saveProfile(profile);
-            } catch (e) {
-              debugPrint('Failed to parse cloud profile doc ${doc.id}: $e');
-            }
-          }
+        }
+
+        // Upload any local profiles missing in cloud
+        final missingProfiles = localProfiles.where((p) => !cloudProfileIds.contains(p.id)).toList();
+        for (final p in missingProfiles) {
+          await syncProfileToCloud(p);
         }
       }
     } catch (e) {

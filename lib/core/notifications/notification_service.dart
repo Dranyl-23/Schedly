@@ -17,9 +17,9 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static const String channelId = 'schedule_scanner_alarms';
-  static const String channelName = 'Schedule Scanner Alarms';
+  static const String channelName = 'Reminda Alarms';
   static const String channelDescription =
-      'High-priority alarms and reminders for classes, shifts, and duties';
+      'High-priority Reminda alarms and reminders for classes, shifts, and duties';
 
   Future<void> initialize() async {
     // 1. Initialize timezone database and detect device location
@@ -27,8 +27,19 @@ class NotificationService {
     try {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint('NotificationService: Local timezone initialized to $timeZoneName');
     } catch (e) {
       debugPrint('NotificationService: Timezone detection fallback: $e');
+      try {
+        final offset = DateTime.now().timeZoneOffset;
+        final location = tz.timeZoneDatabase.locations.values.firstWhere(
+          (loc) => loc.currentTimeZone.offset == offset.inMilliseconds,
+          orElse: () => tz.getLocation('Asia/Manila'),
+        );
+        tz.setLocalLocation(location);
+      } catch (_) {
+        tz.setLocalLocation(tz.getLocation('Asia/Manila'));
+      }
     }
 
     // 2. Android Initialization Settings
@@ -56,7 +67,7 @@ class NotificationService {
       },
     );
 
-    // 5. Create Android Notification Channel
+    // 5. Create Android Notification Channel with Alarm audio attributes
     final androidChannel = AndroidNotificationChannel(
       channelId,
       channelName,
@@ -65,6 +76,7 @@ class NotificationService {
       playSound: true,
       enableVibration: true,
       showBadge: true,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
     );
 
     await _notificationsPlugin
@@ -81,9 +93,11 @@ class NotificationService {
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      final granted =
+      final notifGranted =
           await androidImplementation?.requestNotificationsPermission();
-      return granted ?? false;
+      final exactAlarmGranted =
+          await androidImplementation?.requestExactAlarmsPermission();
+      return (notifGranted ?? false) && (exactAlarmGranted ?? true);
     } else if (Platform.isIOS) {
       final iosImplementation = _notificationsPlugin
           .resolvePlatformSpecificImplementation<
@@ -157,7 +171,7 @@ class NotificationService {
                 ? ' • Location: ${entry.location}'
                 : '';
 
-        final String title = '⏰ ${entry.category.shortLabel}: ${entry.title}';
+        final String title = '${entry.category.shortLabel}: ${entry.title}';
         final String body = '$reminderText$locationText';
 
         try {
@@ -172,11 +186,19 @@ class NotificationService {
                 channelName,
                 channelDescription: channelDescription,
                 importance: Importance.max,
-                priority: Priority.high,
+                priority: Priority.max,
                 category: AndroidNotificationCategory.alarm,
+                audioAttributesUsage: AudioAttributesUsage.alarm,
                 ticker: 'Schedule Reminder',
                 icon: '@mipmap/ic_launcher',
                 styleInformation: BigTextStyleInformation(body),
+                fullScreenIntent: true,
+                visibility: NotificationVisibility.public,
+                channelShowBadge: true,
+                autoCancel: true,
+                enableLights: true,
+                enableVibration: true,
+                playSound: true,
               ),
               iOS: const DarwinNotificationDetails(
                 presentAlert: true,
@@ -233,12 +255,21 @@ class NotificationService {
           channelName,
           channelDescription: channelDescription,
           importance: Importance.max,
-          priority: Priority.high,
+          priority: Priority.max,
+          category: AndroidNotificationCategory.alarm,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+          fullScreenIntent: true,
+          visibility: NotificationVisibility.public,
+          channelShowBadge: true,
+          playSound: true,
+          enableVibration: true,
+          enableLights: true,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
         ),
       ),
     );

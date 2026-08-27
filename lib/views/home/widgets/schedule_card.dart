@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
 import '../../../models/schedule_category.dart';
@@ -45,19 +45,40 @@ class ScheduleCard extends StatelessWidget {
     final palette = TimetableTheme.forTitle(entry.title, isDark);
     final subjectIcon = _getIconForSubject(entry.title, entry.category);
 
+    final now = DateTime.now();
+    final currentWeekday = now.weekday;
+    final currentMinutes = now.hour * 60 + now.minute;
+    bool isOngoing = false;
+    if (entry.daysOfWeek.contains(currentWeekday)) {
+      final startParts = entry.startTime.split(':');
+      final endParts = entry.endTime.split(':');
+      if (startParts.length == 2 && endParts.length == 2) {
+        final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+        int endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+        if (endMin < startMin) endMin += 24 * 60;
+        if (currentMinutes >= startMin && currentMinutes < endMin) {
+          isOngoing = true;
+        }
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
-          width: 1,
+          color: isOngoing
+              ? const Color(0xFF10B981).withValues(alpha: 0.6)
+              : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+          width: isOngoing ? 1.4 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.025),
-            blurRadius: 8,
+            color: isOngoing
+                ? const Color(0xFF10B981).withValues(alpha: isDark ? 0.18 : 0.08)
+                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.025),
+            blurRadius: isOngoing ? 12 : 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -95,7 +116,7 @@ class ScheduleCard extends StatelessWidget {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: palette.primary,
+                    color: isOngoing ? const Color(0xFF10B981) : palette.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -107,15 +128,52 @@ class ScheduleCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        entry.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              entry.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                            ),
+                          ),
+                          if (isOngoing) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 2.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.circle, size: 5.5, color: Color(0xFF10B981)),
+                                  SizedBox(width: 3.5),
+                                  Text(
+                                    'Live',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -138,8 +196,7 @@ class ScheduleCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
                                   color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
                                 ),
                               ),
@@ -151,11 +208,13 @@ class ScheduleCard extends StatelessWidget {
                   ),
                 ),
 
+                const SizedBox(width: 8),
+
                 // Trailing Chevron Arrow
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 20,
-                  color: Color(0xFF94A3B8),
+                  color: isDark ? Colors.white30 : const Color(0xFF94A3B8),
                 ),
               ],
             ),

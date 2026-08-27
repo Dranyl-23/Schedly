@@ -29,7 +29,7 @@ class ScheduleSummaryModal extends ConsumerWidget {
 
   String _generateTextSummary(List<ScheduleEntry> schedules) {
     final buffer = StringBuffer();
-    buffer.writeln('📋 SCHEDLY TIMETABLE SUMMARY');
+    buffer.writeln('REMINDA TIMETABLE SUMMARY');
     buffer.writeln('===========================');
 
     final weekdays = [
@@ -47,7 +47,7 @@ class ScheduleSummaryModal extends ConsumerWidget {
         ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
       if (dayEntries.isNotEmpty) {
-        buffer.writeln('\n📅 ${weekdays[day - 1].toUpperCase()}:');
+        buffer.writeln('\n${weekdays[day - 1].toUpperCase()}:');
         for (final entry in dayEntries) {
           final room = entry.location != null && entry.location!.isNotEmpty
               ? ' (${entry.location})'
@@ -58,7 +58,7 @@ class ScheduleSummaryModal extends ConsumerWidget {
     }
 
     buffer.writeln('\n===========================');
-    buffer.writeln('Generated via Schedly 🚀');
+    buffer.writeln('Generated via Reminda');
     return buffer.toString();
   }
 
@@ -272,7 +272,7 @@ class ScheduleSummaryModal extends ConsumerWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Timetable summary copied to clipboard! 📋'),
+                        content: Text('Timetable summary copied to clipboard!'),
                         backgroundColor: Color(0xFF10B981),
                         behavior: SnackBarBehavior.floating,
                       ),

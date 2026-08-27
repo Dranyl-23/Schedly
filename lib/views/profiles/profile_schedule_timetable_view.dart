@@ -92,7 +92,7 @@ class _ProfileScheduleTimetableViewState
       final pngBytes = byteData.buffer.asUint8List();
       final tempDir = await getTemporaryDirectory();
       final cleanName = widget.profile.name.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-      final filePath = '${tempDir.path}/Schedly_${cleanName}_Timetable.png';
+      final filePath = '${tempDir.path}/Reminda_${cleanName}_Timetable.png';
       final file = File(filePath);
       await file.writeAsBytes(pngBytes);
 
@@ -100,7 +100,7 @@ class _ProfileScheduleTimetableViewState
 
       await Share.shareXFiles(
         [XFile(file.path, mimeType: 'image/png')],
-        text: 'My ${widget.profile.name} Timetable via Schedly 🚀',
+        text: 'My ${widget.profile.name} Timetable via Reminda',
       );
     } catch (e) {
       if (mounted) {
@@ -1071,7 +1071,7 @@ class _ProfileScheduleTimetableViewState
                 const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF2563EB)),
                 const SizedBox(width: 5),
                 Text(
-                  'Created with Schedly - Smart Schedule Assistant',
+                  'Created with Reminda - Smart Schedule Assistant',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,

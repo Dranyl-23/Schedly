@@ -176,12 +176,71 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
           'city': state.city,
           'organizationName': state.organizationName,
           'organizationShort': state.organizationShort,
+          'organizationColorHex': state.organizationColorHex,
           'defaultToneId': state.selectedToneId,
           'defaultReminderLead': state.reminderLeadMinutes,
+          'isSetupCompleted': true,
           'setupCompletedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)).ignore(); // non-blocking background sync
       }
     } catch (_) {}
+  }
+
+  /// Automatically check Firestore for existing user setup and restore it
+  Future<bool> checkAndRestoreCloudSetup(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get()
+          .timeout(const Duration(seconds: 4));
+
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final role = data['role'] as String? ?? 'school';
+        final country = data['countryCode'] as String? ?? 'PH';
+        final region = data['regionCode'] as String? ?? 'R11';
+        final city = data['city'] as String? ?? 'Digos City';
+        final orgName = data['organizationName'] as String? ?? '';
+        final orgShort = data['organizationShort'] as String? ?? '';
+        final orgColor = data['organizationColorHex'] as String? ?? '#DC2626';
+        final toneId = data['defaultToneId'] as String? ?? 'crystal_chime';
+        final leadMins = data['defaultReminderLead'] as int? ?? 15;
+
+        _box = Hive.isBoxOpen(settingsBox)
+            ? Hive.box(settingsBox)
+            : await Hive.openBox(settingsBox);
+
+        await _box?.put('isSetupCompleted', true);
+        await _box?.put('userRole', role);
+        await _box?.put('userCountry', country);
+        await _box?.put('userRegionCode', region);
+        await _box?.put('userCity', city);
+        await _box?.put('userOrgName', orgName);
+        await _box?.put('userOrgShort', orgShort);
+        await _box?.put('userOrgColor', orgColor);
+        await _box?.put('default_alarm_tone_id', toneId);
+        await _box?.put('defaultReminderLead', leadMins);
+
+        state = state.copyWith(
+          isSetupCompleted: true,
+          role: role,
+          countryCode: country,
+          regionCode: region,
+          city: city,
+          organizationName: orgName,
+          organizationShort: orgShort,
+          organizationColorHex: orgColor,
+          selectedToneId: toneId,
+          reminderLeadMinutes: leadMins,
+        );
+
+        return true;
+      }
+    } catch (e) {
+      // Ignored or offline
+    }
+    return false;
   }
 }
 

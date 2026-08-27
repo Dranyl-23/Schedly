@@ -80,7 +80,7 @@ class _ReviewScannedSchedulesViewState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Successfully saved ${entriesToSave.length} schedules! 🚀'),
+          content: Text('Successfully saved ${entriesToSave.length} schedules!'),
           backgroundColor: const Color(0xFF16A34A),
           behavior: SnackBarBehavior.floating,
         ),

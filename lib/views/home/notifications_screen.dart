@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
@@ -98,9 +98,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   child: Row(
                     children: [
                       _buildFilterChip('All (${notifications.length})', null, isDark),
-                      _buildFilterChip('Reminders ⏰', NotificationType.reminder, isDark),
-                      _buildFilterChip('Briefing ☀️', NotificationType.briefing, isDark),
-                      _buildFilterChip('Sync ☁️', NotificationType.sync, isDark),
+                      _buildFilterChip('Reminders', NotificationType.reminder, isDark),
+                      _buildFilterChip('Briefing', NotificationType.briefing, isDark),
+                      _buildFilterChip('Sync', NotificationType.sync, isDark),
                     ],
                   ),
                 ),

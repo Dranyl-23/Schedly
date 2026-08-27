@@ -32,7 +32,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Text('Log Out', style: TextStyle(fontWeight: FontWeight.w800)),
           ],
         ),
-        content: const Text('Are you sure you want to log out of your Schedly account?'),
+        content: const Text('Are you sure you want to log out of your Reminda account?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -78,7 +78,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() => _isSyncing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Schedules synced with Cloud Backup! ☁️'),
+          content: Text('Schedules synced with Cloud Backup!'),
           backgroundColor: Color(0xFF16A34A),
         ),
       );
@@ -155,7 +155,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          auth.isGuest ? 'guest@schedly.app' : auth.userEmail,
+                          auth.isGuest ? 'guest@reminda.app' : auth.userEmail,
                           style: TextStyle(
                             fontSize: 13,
                             color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
@@ -270,7 +270,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _buildNavTile(
                     icon: Icons.info_outline_rounded,
                     title: 'About',
-                    subtitle: 'Schedly v1.0.0',
+                    subtitle: 'Reminda v1.0.0',
                     isDark: isDark,
                     onTap: () {
                       Navigator.push(

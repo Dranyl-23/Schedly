@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../core/widgets/google_logo.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/schedule_provider.dart';
 import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
 import 'workspace_setup_screen.dart';
@@ -145,6 +146,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     final success = await ref.read(authProvider.notifier).signInWithGoogle();
     if (success && mounted) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Automatically restore existing cloud setup so returning users skip workspace setup!
+        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
+        // Automatically pull and sync all cloud schedules and profiles!
+        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
+        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+      }
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
@@ -176,6 +185,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     if (success && mounted) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
+        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
+        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+      }
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
@@ -250,7 +265,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'What do we call you? 👋',
+                            'What do we call you?',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -351,9 +366,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               const SizedBox(height: 6),
 
-              // 3D Schedly Logo Image
+              // 3D Reminda Logo Image
               Image.asset(
-                'assets/images/logo.png',
+                'assets/images/Reminda - NoBG.png',
                 height: 180,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => const Icon(
@@ -376,7 +391,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text(
                 _isEmailMode
                     ? (_isSignUpMode ? 'Create Account' : 'Sign In with Email')
-                    : 'Welcome to Schedly!',
+                    : 'Welcome to Reminda!',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w900,

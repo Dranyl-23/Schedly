@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
 import '../settings/battery_optimization_view.dart';
 
@@ -65,7 +66,7 @@ class HelpSupportView extends StatelessWidget {
                     ),
                     SizedBox(height: 6),
                     Text(
-                      'Frequently asked questions and guides to help you get the most out of Schedly.',
+                      'Frequently asked questions and guides to help you get the most out of Reminda.',
                       style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.35),
                     ),
                   ],
@@ -219,16 +220,20 @@ class HelpSupportView extends StatelessWidget {
                         ),
                       ),
                       subtitle: Text(
-                        'support@schedly.app',
+                        'support@reminda.app',
                         style: TextStyle(
-                          fontSize: 12.5,
-                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                       ),
-                      trailing: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      onTap: () {
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF2563EB)),
+                      onPressed: () {
+                        Clipboard.setData(const ClipboardData(text: 'support@reminda.app'));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Support email: support@schedly.app')),
+                          const SnackBar(content: Text('Support email: support@reminda.app')),
                         );
                       },
                     ),

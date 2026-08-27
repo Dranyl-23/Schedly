@@ -72,7 +72,7 @@ class AboutSchedlyView extends StatelessWidget {
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'About Schedly',
+          'About Reminda',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
@@ -106,30 +106,16 @@ class AboutSchedlyView extends StatelessWidget {
                 child: Column(
                   children: [
                     // Mascot / Logo
-                    Container(
+                    SizedBox(
                       width: 110,
                       height: 110,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
                       child: Image.asset(
-                        'assets/images/mascot.png',
+                        'assets/images/Reminda - NoBG.png',
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Image.asset(
-                          'assets/images/logo.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Icon(
-                            Icons.calendar_month_rounded,
-                            size: 64,
-                            color: Color(0xFF2563EB),
-                          ),
+                        errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.calendar_month_rounded,
+                          size: 64,
+                          color: Color(0xFF2563EB),
                         ),
                       ),
                     ),
@@ -138,7 +124,7 @@ class AboutSchedlyView extends StatelessWidget {
 
                     // App Title
                     Text(
-                      'Schedly',
+                      'Reminda',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
@@ -177,7 +163,7 @@ class AboutSchedlyView extends StatelessWidget {
 
                     // Description Tagline
                     Text(
-                      'Schedly turns your schedule screenshots and PDF documents into organized timetables with smart, reliable alarms.',
+                      'Reminda turns your schedule screenshots and PDF documents into organized timetables with smart, reliable alarms.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13.5,
@@ -318,7 +304,7 @@ class AboutSchedlyView extends StatelessWidget {
                       onTap: () => _showPolicyDialog(
                         context,
                         'Privacy Policy',
-                        'Schedly respects your privacy. All your schedule OCR extractions and timetable data are stored securely on your local device and synchronized directly with your private Firebase Firestore cloud database. We do not sell or distribute your personal data.',
+                        'Reminda respects your privacy. All your schedule OCR extractions and timetable data are stored securely on your local device and synchronized directly with your private Firebase Firestore cloud database. We do not sell or distribute your personal data.',
                       ),
                     ),
                     _buildSubtleDivider(isDark),
@@ -329,7 +315,7 @@ class AboutSchedlyView extends StatelessWidget {
                       onTap: () => _showPolicyDialog(
                         context,
                         'Terms of Service',
-                        'Schedly is provided for personal scheduling and productivity management. By using Schedly, you agree to utilize the AI extraction and calendar features responsibly and in accordance with applicable service terms.',
+                        'Reminda is provided for personal scheduling and productivity management. By using Reminda, you agree to utilize the AI extraction and calendar features responsibly and in accordance with applicable service terms.',
                       ),
                     ),
                   ],
@@ -341,7 +327,7 @@ class AboutSchedlyView extends StatelessWidget {
               // Footer
               Center(
                 child: Text(
-                  'Made with ❤️ in the Philippines by Dranyl\n© 2026 Schedly. All rights reserved.',
+                  'Made in the Philippines by Dranyl\n© 2026 Reminda. All rights reserved.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11.5,

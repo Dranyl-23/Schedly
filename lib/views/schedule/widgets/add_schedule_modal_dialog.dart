@@ -96,7 +96,7 @@ class AddScheduleModalDialog extends StatelessWidget {
               iconGradient: const [Color(0xFF1D4ED8), Color(0xFF2563EB)],
               title: 'Scan Schedule',
               subtitle: 'AI automatically extracts classes, duty shifts, and rooms from photos or PDFs',
-              badgeText: '✨ Recommended',
+              badgeText: 'Recommended',
               badgeColor: const Color(0xFF2563EB),
               borderColor: const Color(0xFF2563EB),
               isDark: isDark,

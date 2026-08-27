@@ -229,7 +229,7 @@ class _ScannerLandingViewState extends ConsumerState<ScannerLandingView> {
                   children: [
                     const Row(
                       children: [
-                        Text('💡', style: TextStyle(fontSize: 16)),
+                        Icon(Icons.lightbulb_outline_rounded, size: 18, color: Color(0xFFF59E0B)),
                         SizedBox(width: 8),
                         Text(
                           'Tips for best results:',

@@ -45,18 +45,18 @@ void main() async {
         profileRepositoryProvider.overrideWithValue(profileRepository),
         notificationServiceProvider.overrideWithValue(notificationService),
       ],
-      child: const SchedlyApp(),
+      child: const RemindaApp(),
     ),
   );
 }
 
-class SchedlyApp extends StatelessWidget {
-  const SchedlyApp({super.key});
+class RemindaApp extends StatelessWidget {
+  const RemindaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Schedly',
+      title: 'Reminda',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

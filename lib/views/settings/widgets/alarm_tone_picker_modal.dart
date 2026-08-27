@@ -60,7 +60,7 @@ class AlarmTonePickerModal extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Alarm Sound & Tone 🎵',
+                        'Alarm Sound & Tone',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,

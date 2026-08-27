@@ -57,7 +57,7 @@ class _ReminderSettingsViewState extends ConsumerState<ReminderSettingsView> {
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reminder preferences updated! ⏰')),
+        const SnackBar(content: Text('Reminder preferences updated!')),
       );
     }
   }

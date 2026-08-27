@@ -31,7 +31,7 @@ class HomeScreen extends ConsumerWidget {
 
     // Extract first name (e.g. "Alfie" or "Dranyl")
     final firstName = auth.userName.trim().split(' ').first;
-    final greeting = '${_getGreeting()}, $firstName! 👋';
+    final greeting = '${_getGreeting()}, $firstName!';
     final fullFormattedDate = DateFormat('EEEE, MMMM d, yyyy').format(DateTime.now());
 
     return Scaffold(
@@ -45,7 +45,7 @@ class HomeScreen extends ConsumerWidget {
           },
         ),
         title: const Text(
-          'Schedly',
+          'Reminda',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/utils/time_utils.dart';
 import '../models/app_notification.dart';
@@ -61,39 +61,91 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
 
     // 1. Generate Daily Briefing if not exists today
     final briefingId = 'briefing_${now.year}_${now.month}_${now.day}';
-    final hasBriefing = currentList.any((n) => n.id == briefingId);
+    final briefingIndex = currentList.indexWhere((n) => n.id == briefingId);
 
-    if (!hasBriefing && todayEntries.isNotEmpty) {
+    if (todayEntries.isNotEmpty) {
       final firstClass = todayEntries.first;
       final count = todayEntries.length;
+      final briefingTime = DateTime(now.year, now.month, now.day, 7, 0);
+      final briefingTimestamp = now.isBefore(briefingTime) ? now : briefingTime;
+
       final briefing = AppNotification(
         id: briefingId,
-        title: '☀️ Today\'s Schedule Briefing',
+        title: 'Today\'s Schedule Briefing',
         body: 'You have $count ${count > 1 ? 'classes & shifts' : 'event'} today starting with "${firstClass.title}" at ${TimeUtils.formatTo12Hour(firstClass.startTime)}.',
         type: NotificationType.briefing,
-        timestamp: DateTime(now.year, now.month, now.day, 7, 0),
-        isRead: false,
+        timestamp: briefingIndex != -1 ? currentList[briefingIndex].timestamp : briefingTimestamp,
+        isRead: briefingIndex != -1 ? currentList[briefingIndex].isRead : false,
       );
-      currentList.insert(0, briefing);
+
+      if (briefingIndex != -1) {
+        currentList[briefingIndex] = briefing;
+      } else {
+        currentList.insert(0, briefing);
+      }
     }
 
-    // 2. Generate Reminder alerts for today's active classes
+    // 2. Generate / Update Real-Time Reminder alerts for today's active classes
     for (final entry in todayEntries) {
       final reminderId = 'reminder_${now.year}_${now.month}_${now.day}_${entry.id}';
-      final hasReminder = currentList.any((n) => n.id == reminderId);
+      final existingIndex = currentList.indexWhere((n) => n.id == reminderId);
 
-      if (!hasReminder) {
-        final roomText = entry.location != null && entry.location!.isNotEmpty ? ' at ${entry.location}' : '';
-        final reminder = AppNotification(
-          id: reminderId,
-          title: '⏰ Upcoming: ${entry.title}',
-          body: 'Scheduled from ${TimeUtils.formatTo12Hour(entry.startTime)} to ${TimeUtils.formatTo12Hour(entry.endTime)}$roomText.',
-          type: NotificationType.reminder,
-          timestamp: DateTime(now.year, now.month, now.day, 8, 0),
-          isRead: false,
-          relatedScheduleId: entry.id,
-        );
-        currentList.insert(0, reminder);
+      final roomText = entry.location != null && entry.location!.trim().isNotEmpty
+          ? ' at ${entry.location!.trim()}'
+          : '';
+
+      final startParts = entry.startTime.split(':');
+      final endParts = entry.endTime.split(':');
+      final startHour = int.tryParse(startParts[0]) ?? 0;
+      final startMin = int.tryParse(startParts.length > 1 ? startParts[1] : '0') ?? 0;
+      final endHour = int.tryParse(endParts[0]) ?? 0;
+      final endMin = int.tryParse(endParts.length > 1 ? endParts[1] : '0') ?? 0;
+
+      final startDateTime = DateTime(now.year, now.month, now.day, startHour, startMin);
+      final endDateTime = DateTime(now.year, now.month, now.day, endHour, endMin);
+
+      final String notifTitle;
+      final String notifBody;
+      final DateTime notifTimestamp;
+
+      if (now.isAfter(endDateTime)) {
+        // Event is already finished
+        notifTitle = 'Completed: ${entry.title}';
+        notifBody = 'Finished at ${TimeUtils.formatTo12Hour(entry.endTime)}$roomText.';
+        notifTimestamp = endDateTime;
+      } else if (now.isAfter(startDateTime) && now.isBefore(endDateTime)) {
+        // Event is currently happening
+        notifTitle = 'Ongoing: ${entry.title}';
+        notifBody = 'Started at ${TimeUtils.formatTo12Hour(entry.startTime)} • Ends at ${TimeUtils.formatTo12Hour(entry.endTime)}$roomText.';
+        notifTimestamp = startDateTime;
+      } else {
+        // Event is upcoming later today
+        final leadMins = entry.reminders.isNotEmpty ? entry.reminders.first : 15;
+        final leadTime = startDateTime.subtract(Duration(minutes: leadMins));
+        final diffMins = startDateTime.difference(now).inMinutes;
+        final timeText = diffMins > 60
+            ? 'in ${(diffMins / 60).floor()}h ${diffMins % 60}m'
+            : 'in $diffMins mins';
+
+        notifTitle = 'Upcoming: ${entry.title}';
+        notifBody = 'Starts at ${TimeUtils.formatTo12Hour(entry.startTime)} ($timeText)$roomText.';
+        notifTimestamp = now.isAfter(leadTime) ? leadTime : now;
+      }
+
+      final reminder = AppNotification(
+        id: reminderId,
+        title: notifTitle,
+        body: notifBody,
+        type: NotificationType.reminder,
+        timestamp: notifTimestamp,
+        isRead: existingIndex != -1 ? currentList[existingIndex].isRead : false,
+        relatedScheduleId: entry.id,
+      );
+
+      if (existingIndex != -1) {
+        currentList[existingIndex] = reminder;
+      } else {
+        currentList.add(reminder);
       }
     }
 

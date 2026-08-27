@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/schedule_provider.dart';
 import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
 import 'login_screen.dart';
@@ -48,7 +50,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _startTransitionTimer() async {
-    await Future.delayed(const Duration(milliseconds: 2800));
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
+        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
+        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+      } catch (_) {}
+    }
+
+    await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
     _navigateToNext();
   }
@@ -133,7 +144,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           );
                         },
                         child: Image.asset(
-                          'assets/images/logo.png',
+                          'assets/images/Reminda - NoBG.png',
                           height: screenSize.height * 0.34,
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => const Icon(

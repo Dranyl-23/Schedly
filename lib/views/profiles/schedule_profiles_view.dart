@@ -316,7 +316,7 @@ class ScheduleProfilesView extends ConsumerWidget {
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Profile "$name" created successfully! 🎉'),
+                                    content: Text('Profile "$name" created successfully!'),
                                     backgroundColor: const Color(0xFF10B981),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -370,7 +370,7 @@ class ScheduleProfilesView extends ConsumerWidget {
             ],
           ),
           content: const Text(
-            'You must keep at least one active schedule profile in Schedly.',
+            'You must keep at least one active schedule profile in Reminda.',
             style: TextStyle(fontSize: 14),
           ),
           actions: [

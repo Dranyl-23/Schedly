@@ -36,7 +36,35 @@ class SoundSettingsNotifier extends StateNotifier<SoundSettingsState> {
     _init();
   }
 
-  AudioPlayer get _audioPlayer => _player ??= AudioPlayer();
+  AudioPlayer get _audioPlayer {
+    if (_player == null) {
+      _player = AudioPlayer();
+      _configureAlarmAudioContext(_player!);
+    }
+    return _player!;
+  }
+
+  void _configureAlarmAudioContext(AudioPlayer player) {
+    try {
+      final audioContext = AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: true,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.alarm, // Routes to Alarm Volume slider (STREAM_ALARM)
+          audioFocus: AndroidAudioFocus.gainTransientExclusive,
+        ),
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: const {
+            AVAudioSessionOptions.duckOthers,
+          },
+        ),
+      );
+      player.setAudioContext(audioContext);
+      AudioPlayer.global.setAudioContext(audioContext);
+    } catch (_) {}
+  }
 
   Future<void> _init() async {
     _box = await Hive.openBox('app_settings_box');

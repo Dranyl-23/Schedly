@@ -256,7 +256,7 @@ class _WorkspaceSetupScreenState extends ConsumerState<WorkspaceSetupScreen> {
                           ),
                         )
                       : Text(
-                          _currentStep == 3 ? 'Complete Setup & Launch Schedly' : 'Continue',
+                          _currentStep == 3 ? 'Complete Setup & Launch Reminda' : 'Continue',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -348,7 +348,7 @@ class _WorkspaceSetupScreenState extends ConsumerState<WorkspaceSetupScreen> {
           Text(
             isGuest
                 ? 'Let\'s set up your workspace — you can create an account anytime later'
-                : 'What will you mainly use Schedly for?',
+                : 'What will you mainly use Reminda for?',
             style: TextStyle(
               fontSize: 14,
               color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),

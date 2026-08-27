@@ -190,27 +190,34 @@ class _ManageAllSchedulesViewState extends ConsumerState<ManageAllSchedulesView>
                                     ],
                                   ),
                                   const SizedBox(height: 3),
-                                  Row(
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 4,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
                                     children: [
-                                      Icon(Icons.access_time_rounded, size: 12, color: const Color(0xFF64748B)),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${TimeUtils.formatTo12Hour(entry.startTime)} – ${TimeUtils.formatTo12Hour(entry.endTime)}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
-                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.access_time_rounded, size: 12, color: const Color(0xFF64748B)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${TimeUtils.formatTo12Hour(entry.startTime)} – ${TimeUtils.formatTo12Hour(entry.endTime)}',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      if (entry.location != null) ...[
-                                        const SizedBox(width: 8),
+                                      if (entry.location != null && entry.location!.trim().isNotEmpty)
                                         Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                           decoration: BoxDecoration(
                                             color: palette.badgeBg,
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Text(
-                                            entry.location!,
+                                            entry.location!.trim(),
                                             style: TextStyle(
                                               fontSize: 10,
                                               fontWeight: FontWeight.w800,
@@ -218,7 +225,6 @@ class _ManageAllSchedulesViewState extends ConsumerState<ManageAllSchedulesView>
                                             ),
                                           ),
                                         ),
-                                      ],
                                     ],
                                   ),
                                 ],

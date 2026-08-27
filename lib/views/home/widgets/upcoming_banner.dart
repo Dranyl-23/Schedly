@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
@@ -6,58 +7,163 @@ import '../../../models/schedule_category.dart';
 import '../../../providers/filter_providers.dart';
 import '../schedule_detail_view.dart';
 
-class UpcomingBanner extends ConsumerWidget {
+class UpcomingBanner extends ConsumerStatefulWidget {
   const UpcomingBanner({super.key});
+
+  @override
+  ConsumerState<UpcomingBanner> createState() => _UpcomingBannerState();
+}
+
+class _UpcomingBannerState extends ConsumerState<UpcomingBanner> {
+  Timer? _tickerTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ticks every second for real-time countdown and progress updates
+    _tickerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tickerTimer?.cancel();
+    super.dispose();
+  }
 
   IconData _getIconForSubject(String title, ScheduleCategory category) {
     final lower = title.toLowerCase();
-    if (lower.contains('program') || lower.contains('code') || lower.contains('cs') || lower.contains('it')) {
+    if (lower.contains('program') ||
+        lower.contains('code') ||
+        lower.contains('cs') ||
+        lower.contains('it')) {
       return Icons.computer_rounded;
     }
-    if (lower.contains('math') || lower.contains('calc') || lower.contains('stat')) {
+    if (lower.contains('math') ||
+        lower.contains('calc') ||
+        lower.contains('stat')) {
       return Icons.calculate_rounded;
     }
-    if (lower.contains('data') || lower.contains('db') || lower.contains('sql')) {
+    if (lower.contains('data') ||
+        lower.contains('db') ||
+        lower.contains('sql')) {
       return Icons.storage_rounded;
     }
-    if (lower.contains('duty') || lower.contains('medic') || lower.contains('nurs')) {
+    if (lower.contains('duty') ||
+        lower.contains('medic') ||
+        lower.contains('nurs')) {
       return Icons.medical_services_rounded;
     }
     return category.icon;
   }
 
-  String _calculateTimeRemaining(String startTimeStr) {
+  /// Calculates real-time countdown string and progress percentage
+  Map<String, dynamic> _computeCountdown(
+    String startTimeStr,
+    String endTimeStr,
+    bool isOngoing,
+  ) {
     try {
       final now = DateTime.now();
-      final timeParts = startTimeStr.split(':');
-      final startHour = int.parse(timeParts[0]);
-      final startMinute = int.parse(timeParts[1]);
+      final startParts = startTimeStr.split(':');
+      final endParts = endTimeStr.split(':');
 
-      final eventToday = DateTime(now.year, now.month, now.day, startHour, startMinute);
-      final diff = eventToday.difference(now);
+      final startHour = int.parse(startParts[0]);
+      final startMinute = int.parse(startParts[1]);
+      final endHour = int.parse(endParts[0]);
+      final endMinute = int.parse(endParts[1]);
 
-      if (diff.isNegative) {
-        return 'In progress';
+      var startDateTime = DateTime(now.year, now.month, now.day, startHour, startMinute);
+      var endDateTime = DateTime(now.year, now.month, now.day, endHour, endMinute);
+
+      // Handle overnight shift
+      if (endDateTime.isBefore(startDateTime)) {
+        endDateTime = endDateTime.add(const Duration(days: 1));
       }
-      final totalMinutes = diff.inMinutes;
-      if (totalMinutes < 60) {
-        return 'in $totalMinutes min';
+
+      if (isOngoing) {
+        // Class is currently ongoing -> Countdown to END TIME
+        final diffToEnd = endDateTime.difference(now);
+        final totalDuration = endDateTime.difference(startDateTime);
+        final elapsed = now.difference(startDateTime);
+
+        final progress = totalDuration.inSeconds > 0
+            ? (elapsed.inSeconds / totalDuration.inSeconds).clamp(0.0, 1.0)
+            : 0.0;
+
+        if (diffToEnd.isNegative) {
+          return {
+            'text': 'Finishing up...',
+            'progress': 1.0,
+            'isOngoing': true,
+          };
+        }
+
+        final hours = diffToEnd.inHours;
+        final minutes = diffToEnd.inMinutes % 60;
+        final seconds = diffToEnd.inSeconds % 60;
+
+        String formatted;
+        if (hours > 0) {
+          formatted = '${hours}h ${minutes}m ${seconds}s left';
+        } else if (minutes > 0) {
+          formatted = '${minutes}m ${seconds}s left';
+        } else {
+          formatted = '${seconds}s left';
+        }
+
+        return {
+          'text': formatted,
+          'progress': progress,
+          'isOngoing': true,
+        };
       } else {
-        final hours = totalMinutes ~/ 60;
-        final mins = totalMinutes % 60;
-        return 'in ${hours}h ${mins > 0 ? '${mins}m' : ''}';
+        // Class is upcoming -> Countdown to START TIME
+        final diffToStart = startDateTime.difference(now);
+
+        if (diffToStart.isNegative) {
+          return {
+            'text': 'Starting now',
+            'progress': 0.0,
+            'isOngoing': false,
+          };
+        }
+
+        final hours = diffToStart.inHours;
+        final minutes = diffToStart.inMinutes % 60;
+        final seconds = diffToStart.inSeconds % 60;
+
+        String formatted;
+        if (hours > 0) {
+          formatted = 'Starts in ${hours}h ${minutes}m ${seconds}s';
+        } else if (minutes > 0) {
+          formatted = 'Starts in ${minutes}m ${seconds}s';
+        } else {
+          formatted = 'Starts in ${seconds}s';
+        }
+
+        return {
+          'text': formatted,
+          'progress': 0.0,
+          'isOngoing': false,
+        };
       }
     } catch (_) {
-      return 'Today';
+      return {
+        'text': isOngoing ? 'In progress' : 'Upcoming',
+        'progress': 0.0,
+        'isOngoing': isOngoing,
+      };
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final upcoming = ref.watch(upcomingTodayScheduleProvider);
+  Widget build(BuildContext context) {
+    final liveStatus = ref.watch(activeOrUpcomingScheduleProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (upcoming == null) {
+    if (liveStatus == null) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(18),
@@ -97,7 +203,7 @@ class UpcomingBanner extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'All caught up today! 🎉',
+                    'All caught up today!',
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
@@ -109,7 +215,9 @@ class UpcomingBanner extends ConsumerWidget {
                     'No remaining scheduled events or shifts for today.',
                     style: TextStyle(
                       fontSize: 12.5,
-                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : const Color(0xFF64748B),
                     ),
                   ),
                 ],
@@ -120,25 +228,37 @@ class UpcomingBanner extends ConsumerWidget {
       );
     }
 
-    final remainingText = _calculateTimeRemaining(upcoming.startTime);
-    final subjectIcon = _getIconForSubject(upcoming.title, upcoming.category);
+    final entry = liveStatus.entry;
+    final isOngoing = liveStatus.isOngoing;
+    final countdownData = _computeCountdown(entry.startTime, entry.endTime, isOngoing);
+    final countdownText = countdownData['text'] as String;
+    final progress = countdownData['progress'] as double;
+    final subjectIcon = _getIconForSubject(entry.title, entry.category);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF0F3BB8),
-            Color(0xFF1D4ED8),
-            Color(0xFF2563EB),
-          ],
+        gradient: LinearGradient(
+          colors: isOngoing
+              ? [
+                  const Color(0xFF065F46), // Deep Emerald Green for Active
+                  const Color(0xFF059669),
+                  const Color(0xFF10B981),
+                ]
+              : [
+                  const Color(0xFF0F3BB8), // Deep Royal Blue for Upcoming
+                  const Color(0xFF1D4ED8),
+                  const Color(0xFF2563EB),
+                ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
+            color: isOngoing
+                ? const Color(0xFF059669).withValues(alpha: 0.35)
+                : const Color(0xFF1D4ED8).withValues(alpha: 0.35),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -150,7 +270,9 @@ class UpcomingBanner extends ConsumerWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => ScheduleDetailView(entry: upcoming)),
+              MaterialPageRoute(
+                builder: (_) => ScheduleDetailView(entry: entry),
+              ),
             );
           },
           borderRadius: BorderRadius.circular(22),
@@ -159,32 +281,67 @@ class UpcomingBanner extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header Row: NEXT SCHEDULE + in 35 min
+                // Top Header Row: Status Tag + Live Countdown Pill
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'NEXT SCHEDULE',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        color: Colors.white70,
-                      ),
+                    Row(
+                      children: [
+                        if (isOngoing) ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF34D399),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Text(
+                          isOngoing ? 'HAPPENING NOW' : 'NEXT SCHEDULE',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      child: Text(
-                        remainingText,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          width: 1,
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isOngoing
+                                ? Icons.timer_outlined
+                                : Icons.hourglass_top_rounded,
+                            size: 13,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            countdownText,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -195,10 +352,10 @@ class UpcomingBanner extends ConsumerWidget {
                 // Content Row: Icon Box + Subject Title & Location
                 Row(
                   children: [
-                    // Frosted White/Blue Icon Box
+                    // Frosted White/Color Icon Box
                     Container(
-                      width: 58,
-                      height: 58,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(16),
@@ -209,7 +366,7 @@ class UpcomingBanner extends ConsumerWidget {
                       ),
                       child: Icon(
                         subjectIcon,
-                        size: 30,
+                        size: 28,
                         color: Colors.white,
                       ),
                     ),
@@ -222,7 +379,7 @@ class UpcomingBanner extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            upcoming.title,
+                            entry.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -235,10 +392,14 @@ class UpcomingBanner extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              const Icon(Icons.access_time_rounded, size: 14, color: Colors.white70),
+                              const Icon(
+                                Icons.access_time_rounded,
+                                size: 14,
+                                color: Colors.white70,
+                              ),
                               const SizedBox(width: 5),
                               Text(
-                                '${TimeUtils.formatTo12Hour(upcoming.startTime)} – ${TimeUtils.formatTo12Hour(upcoming.endTime)}',
+                                '${TimeUtils.formatTo12Hour(entry.startTime)} – ${TimeUtils.formatTo12Hour(entry.endTime)}',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -247,15 +408,20 @@ class UpcomingBanner extends ConsumerWidget {
                               ),
                             ],
                           ),
-                          if (upcoming.location != null && upcoming.location!.isNotEmpty) ...[
+                          if (entry.location != null &&
+                              entry.location!.isNotEmpty) ...[
                             const SizedBox(height: 3),
                             Row(
                               children: [
-                                const Icon(Icons.location_on_outlined, size: 14, color: Colors.white70),
+                                const Icon(
+                                  Icons.location_on_outlined,
+                                  size: 14,
+                                  color: Colors.white70,
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    upcoming.location!,
+                                    entry.location!,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -273,6 +439,44 @@ class UpcomingBanner extends ConsumerWidget {
                     ),
                   ],
                 ),
+
+                // In-Progress Animated Duration Progress Bar
+                if (isOngoing) ...[
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 5,
+                      backgroundColor: Colors.white.withValues(alpha: 0.25),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${(progress * 100).toInt()}% completed',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      Text(
+                        'Ends at ${TimeUtils.formatTo12Hour(entry.endTime)}',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

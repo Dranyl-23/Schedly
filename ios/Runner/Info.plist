@@ -7,7 +7,13 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Schedule Scanner</string>
+	<string>Reminda</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Reminda needs camera access to take photos of printed schedule timetables for AI parsing.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Reminda needs photo library access to select and parse schedule timetable images and documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Reminda needs permission to save exported high-resolution timetable images to your photo library.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
