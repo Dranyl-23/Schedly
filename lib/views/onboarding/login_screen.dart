@@ -36,25 +36,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showError(String message) {
-    if (!mounted) return;
+    if (!mounted || message.trim().isEmpty) return;
+
+    final isOffline = message.toLowerCase().contains('internet') ||
+        message.toLowerCase().contains('network') ||
+        message.toLowerCase().contains('connection') ||
+        message.toLowerCase().contains('offline');
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isOffline ? Icons.wifi_off_rounded : Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isOffline ? 'Offline / No Connection' : 'Authentication Notice',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: Colors.white.withValues(alpha: 0.92),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFFDC2626),
+        action: isOffline
+            ? SnackBarAction(
+                label: 'Use Guest',
+                textColor: const Color(0xFFFEF08A),
+                onPressed: () {
+                  ref.read(authProvider.notifier).loginAsGuest();
+                  _navigateToHome();
+                },
+              )
+            : null,
+        backgroundColor: isOffline ? const Color(0xFFBE123C) : const Color(0xFFDC2626),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

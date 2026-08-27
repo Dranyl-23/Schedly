@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/time_utils.dart';
 import '../../models/schedule_category.dart';
 import '../../models/schedule_entry.dart';
+import '../../providers/profile_provider.dart';
 import '../../providers/schedule_provider.dart';
 import 'widgets/day_selector_chips.dart';
 import 'widgets/reminder_picker.dart';
@@ -33,6 +34,7 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
   late TimeOfDay _endTime;
   late bool _spansNextDay;
   late List<int> _reminders;
+  bool _isSaving = false;
 
   bool get _isEditing => widget.initialEntry != null;
 
@@ -45,11 +47,15 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
     _notesController = TextEditingController(text: e?.notes ?? '');
 
     _selectedCategory = e?.category ?? ScheduleCategory.classSchedule;
-    _selectedDays = e?.daysOfWeek ?? [DateTime.now().weekday];
+    _selectedDays = e?.daysOfWeek != null && e!.daysOfWeek.isNotEmpty
+        ? List<int>.from(e.daysOfWeek)
+        : [DateTime.now().weekday];
     _startTime = e != null ? TimeUtils.stringToTimeOfDay(e.startTime) : const TimeOfDay(hour: 8, minute: 30);
     _endTime = e != null ? TimeUtils.stringToTimeOfDay(e.endTime) : const TimeOfDay(hour: 10, minute: 0);
     _spansNextDay = e?.spansNextDay ?? false;
-    _reminders = e?.reminders ?? [_selectedCategory.defaultReminderLeadMinutes];
+    _reminders = e?.reminders != null && e!.reminders.isNotEmpty
+        ? List<int>.from(e.reminders)
+        : [_selectedCategory.defaultReminderLeadMinutes];
   }
 
   @override
@@ -89,42 +95,80 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_selectedDays.isEmpty) {
+    if (_isSaving) return;
+
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one day.')),
+        const SnackBar(
+          content: Text('Please enter a schedule title.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFFDC2626),
+        ),
       );
       return;
     }
 
-    final startStr = TimeUtils.timeOfDayToString(_startTime);
-    final endStr = TimeUtils.timeOfDayToString(_endTime);
-
-    final entry = ScheduleEntry(
-      id: widget.initialEntry?.id,
-      title: _titleController.text.trim(),
-      category: _selectedCategory,
-      daysOfWeek: _selectedDays,
-      startTime: startStr,
-      endTime: endStr,
-      spansNextDay: _spansNextDay,
-      location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
-      notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
-      reminders: _reminders,
-      isActive: widget.initialEntry?.isActive ?? true,
-      createdAt: widget.initialEntry?.createdAt,
-      sourceImageId: widget.initialEntry?.sourceImageId,
-    );
-
-    final notifier = ref.read(scheduleListProvider.notifier);
-    if (_isEditing) {
-      await notifier.updateSchedule(entry);
-    } else {
-      await notifier.addSchedule(entry);
+    if (_selectedDays.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select at least one day of the week.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
+      return;
     }
 
-    if (mounted) {
-      Navigator.pop(context, true);
+    setState(() => _isSaving = true);
+
+    try {
+      final startStr = TimeUtils.timeOfDayToString(_startTime);
+      final endStr = TimeUtils.timeOfDayToString(_endTime);
+      final activeProfile = ref.read(activeProfileProvider);
+
+      final entry = ScheduleEntry(
+        id: widget.initialEntry?.id,
+        profileId: widget.initialEntry?.profileId ?? activeProfile?.id,
+        title: title,
+        category: _selectedCategory,
+        daysOfWeek: _selectedDays,
+        startTime: startStr,
+        endTime: endStr,
+        spansNextDay: _spansNextDay,
+        location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
+        notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+        reminders: _reminders,
+        isActive: widget.initialEntry?.isActive ?? true,
+        createdAt: widget.initialEntry?.createdAt,
+        sourceImageId: widget.initialEntry?.sourceImageId,
+      );
+
+      final notifier = ref.read(scheduleListProvider.notifier);
+      if (_isEditing) {
+        await notifier.updateSchedule(entry);
+      } else {
+        await notifier.addSchedule(entry);
+      }
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      debugPrint('AddEditScheduleView: Error saving: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save schedule: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -140,17 +184,28 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Schedule' : 'New Schedule'),
         actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
+          _isSaving
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 16.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2.2),
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _save,
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
         ],
       ),
       body: Form(
@@ -458,9 +513,39 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
             const SizedBox(height: 32),
 
             // Save Button
-            ElevatedButton(
-              onPressed: _save,
-              child: Text(_isEditing ? 'Save Changes' : 'Add to Schedule'),
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 2,
+                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(_isEditing ? Icons.check_circle_rounded : Icons.add_circle_rounded, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            _isEditing ? 'Save Changes' : 'Add to Schedule',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+              ),
             ),
 
             const SizedBox(height: 40),

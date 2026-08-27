@@ -132,7 +132,11 @@ class BatteryOptimizationView extends StatelessWidget {
               Expanded(
                 child: Text(
                   brand,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
                 ),
               ),
             ],

@@ -288,15 +288,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return false;
     } on FirebaseAuthException catch (e) {
+      final msg = _mapFirebaseError(e.code, e.message);
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _mapFirebaseError(e.code, e.message),
+        errorMessage: msg.isNotEmpty ? msg : null,
       );
       return false;
     } catch (e) {
+      final msg = _mapGoogleSignInError(e);
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Google Sign-In failed: ${e.toString()}',
+        errorMessage: msg.isNotEmpty ? msg : null,
       );
       return false;
     }
@@ -352,13 +354,44 @@ class AuthNotifier extends StateNotifier<AuthState> {
     super.dispose();
   }
 
+  String _mapGoogleSignInError(dynamic error) {
+    final errStr = error.toString().toLowerCase();
+
+    // 1. User intentionally cancelled
+    if (errStr.contains('canceled') ||
+        errStr.contains('cancelled') ||
+        errStr.contains('12501') ||
+        errStr.contains('popup_closed') ||
+        errStr.contains('sign_in_canceled')) {
+      return ''; // Silent cancel, no error banner
+    }
+
+    // 2. Network / Offline
+    if (errStr.contains('network_error') ||
+        errStr.contains('network') ||
+        errStr.contains('socketexception') ||
+        errStr.contains('timeout') ||
+        errStr.contains(': 7:') ||
+        errStr.contains('connection_failed')) {
+      return 'No internet connection. Please check your Wi-Fi or Mobile Data, or tap Continue as Guest.';
+    }
+
+    // 3. Google Play Services unavailable
+    if (errStr.contains('play_services') || errStr.contains('api_not_available')) {
+      return 'Google Play Services is not available. Please try Email login or Guest Mode.';
+    }
+
+    // 4. Default clean fallback
+    return 'Google Sign-In could not connect. Please check your connection or Continue as Guest.';
+  }
+
   String _mapFirebaseError(String code, String? defaultMsg) {
     switch (code) {
       case 'user-not-found':
         return 'No account found with this email.';
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect email or password.';
+        return 'Incorrect email or password. Please try again.';
       case 'email-already-in-use':
         return 'An account already exists with this email.';
       case 'invalid-email':
@@ -366,13 +399,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 'weak-password':
         return 'Password should be at least 6 characters.';
       case 'network-request-failed':
-        return 'Network error. Please check your internet connection.';
+        return 'No internet connection. Please check your network or Continue as Guest.';
       case 'user-disabled':
-        return 'This account has been disabled.';
+        return 'This account has been disabled. Please contact support.';
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return 'Too many login attempts. Please wait a moment and try again.';
       default:
-        return defaultMsg ?? 'Authentication failed ($code).';
+        return 'Authentication failed. Please check your connection and try again.';
     }
   }
 }

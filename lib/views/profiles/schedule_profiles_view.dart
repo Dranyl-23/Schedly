@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/page_transitions.dart';
 import '../../models/schedule_profile.dart';
 import '../../providers/profile_provider.dart';
+import 'profile_schedule_timetable_view.dart';
 
 class ScheduleProfilesView extends ConsumerWidget {
   const ScheduleProfilesView({super.key});
@@ -690,6 +692,12 @@ class ScheduleProfilesView extends ConsumerWidget {
                 ),
                 onTap: () {
                   ref.read(profileListProvider.notifier).setActive(profile.id);
+                  Navigator.push(
+                    context,
+                    SmoothSlideFadeRoute(
+                      page: ProfileScheduleTimetableView(profile: profile),
+                    ),
+                  );
                 },
               ),
             ),

@@ -25,19 +25,26 @@ class ScheduleDetailView extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
     final soundState = ref.watch(soundSettingsProvider);
     final profiles = ref.watch(profileListProvider);
+    final allSchedules = ref.watch(scheduleListProvider);
 
-    final linkedProfile = entry.profileId != null
+    final liveEntry = allSchedules.cast<ScheduleEntry?>().firstWhere(
+          (e) => e?.id == entry.id,
+          orElse: () => entry,
+        ) ??
+        entry;
+
+    final linkedProfile = liveEntry.profileId != null
         ? profiles.cast<dynamic>().firstWhere(
-            (p) => p.id == entry.profileId,
+            (p) => p.id == liveEntry.profileId,
             orElse: () => null,
           )
         : null;
 
-    final primaryColor = entry.category.color;
+    final primaryColor = liveEntry.category.color;
     final durationFormatted = TimeUtils.calculateDuration(
-      entry.startTime,
-      entry.endTime,
-      spansNextDay: entry.spansNextDay,
+      liveEntry.startTime,
+      liveEntry.endTime,
+      spansNextDay: liveEntry.spansNextDay,
     );
 
     return Scaffold(
@@ -57,7 +64,7 @@ class ScheduleDetailView extends ConsumerWidget {
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Shared "${entry.title}"'),
+                  content: Text('Shared "${liveEntry.title}"'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -66,7 +73,7 @@ class ScheduleDetailView extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
             tooltip: 'Delete Schedule',
-            onPressed: () => _confirmDelete(context, ref),
+            onPressed: () => _confirmDelete(context, ref, liveEntry),
           ),
         ],
       ),
@@ -115,11 +122,17 @@ class ScheduleDetailView extends ConsumerWidget {
                       final updated = await Navigator.push<bool>(
                         context,
                         SmoothSlideFadeRoute(
-                          page: AddEditScheduleView(initialEntry: entry),
+                          page: AddEditScheduleView(initialEntry: liveEntry),
                         ),
                       );
                       if (updated == true && context.mounted) {
-                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Schedule updated successfully!'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Color(0xFF16A34A),
+                          ),
+                        );
                       }
                     },
                     icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 19),
@@ -147,7 +160,7 @@ class ScheduleDetailView extends ConsumerWidget {
                 child: SizedBox(
                   height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: () => _confirmDelete(context, ref),
+                    onPressed: () => _confirmDelete(context, ref, liveEntry),
                     icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 19),
                     label: const Text(
                       'Delete',
@@ -222,10 +235,10 @@ class ScheduleDetailView extends ConsumerWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(entry.category.icon, size: 14, color: primaryColor),
+                          Icon(liveEntry.category.icon, size: 14, color: primaryColor),
                           const SizedBox(width: 5),
                           Text(
-                            entry.category.displayName.toUpperCase(),
+                            liveEntry.category.displayName.toUpperCase(),
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -259,7 +272,7 @@ class ScheduleDetailView extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: entry.isActive
+                        color: liveEntry.isActive
                             ? const Color(0xFF10B981).withValues(alpha: 0.15)
                             : const Color(0xFF64748B).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
@@ -272,16 +285,16 @@ class ScheduleDetailView extends ConsumerWidget {
                             height: 6,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: entry.isActive ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                              color: liveEntry.isActive ? const Color(0xFF10B981) : const Color(0xFF64748B),
                             ),
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            entry.isActive ? 'Active' : 'Muted',
+                            liveEntry.isActive ? 'Active' : 'Muted',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
-                              color: entry.isActive ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                              color: liveEntry.isActive ? const Color(0xFF10B981) : const Color(0xFF64748B),
                             ),
                           ),
                         ],
@@ -293,7 +306,7 @@ class ScheduleDetailView extends ConsumerWidget {
 
                 // Main Title
                 Text(
-                  entry.title,
+                  liveEntry.title,
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
@@ -323,14 +336,14 @@ class ScheduleDetailView extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (entry.location != null && entry.location!.isNotEmpty)
+                    if (liveEntry.location != null && liveEntry.location!.isNotEmpty)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.location_on_outlined, size: 15, color: Color(0xFF2563EB)),
                           const SizedBox(width: 3),
                           Text(
-                            entry.location!,
+                            liveEntry.location!,
                             style: const TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
@@ -394,7 +407,7 @@ class ScheduleDetailView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${TimeUtils.formatTo12Hour(entry.startTime)}  →  ${TimeUtils.formatTo12Hour(entry.endTime)}',
+                          '${TimeUtils.formatTo12Hour(liveEntry.startTime)}  →  ${TimeUtils.formatTo12Hour(liveEntry.endTime)}',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -403,7 +416,7 @@ class ScheduleDetailView extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (entry.spansNextDay) ...[
+                    if (liveEntry.spansNextDay) ...[
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -436,13 +449,13 @@ class ScheduleDetailView extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildWeekdayCircle(1, 'M', 'Mon', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(2, 'T', 'Tue', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(3, 'W', 'Wed', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(4, 'TH', 'Thu', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(5, 'F', 'Fri', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(6, 'S', 'Sat', entry.daysOfWeek, isDark),
-                    _buildWeekdayCircle(7, 'SU', 'Sun', entry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(1, 'M', 'Mon', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(2, 'T', 'Tue', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(3, 'W', 'Wed', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(4, 'TH', 'Thu', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(5, 'F', 'Fri', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(6, 'S', 'Sat', liveEntry.daysOfWeek, isDark),
+                    _buildWeekdayCircle(7, 'SU', 'Sun', liveEntry.daysOfWeek, isDark),
                   ],
                 ),
               ],
@@ -528,60 +541,88 @@ class ScheduleDetailView extends ConsumerWidget {
                 const Divider(height: 1),
                 const SizedBox(height: 12),
 
-                // Reminders List
+                // Reminders List Header & Wrap
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Wrap(
-                      spacing: 8,
-                      children: entry.reminders.map((lead) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFF2563EB)),
-                              const SizedBox(width: 4),
-                              Text(
-                                TimeUtils.formatLeadMinutes(lead),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF2563EB),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                    Text(
+                      'ACTIVE REMINDERS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                        color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                      ),
                     ),
-                    TextButton(
+                    TextButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
                           SmoothSlideFadeRoute(
-                            page: ReminderSettingsView(entry: entry),
+                            page: ReminderSettingsView(entry: liveEntry),
                           ),
                         );
                       },
-                      child: const Text(
+                      icon: const Icon(Icons.tune_rounded, size: 15, color: Color(0xFF2563EB)),
+                      label: const Text(
                         'Edit Alarms',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF2563EB),
                         ),
                       ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: liveEntry.reminders.isEmpty
+                      ? [
+                          Text(
+                            'No alarms set for this schedule.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontStyle: FontStyle.italic,
+                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ]
+                      : liveEntry.reminders.map((lead) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.alarm_on_rounded, size: 14, color: Color(0xFF2563EB)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  TimeUtils.formatLeadMinutes(lead),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                 ),
               ],
             ),
@@ -589,8 +630,8 @@ class ScheduleDetailView extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // 4. Notes & Remarks Card
-          _buildSectionTitle('NOTES & INSTRUCTOR REMARKS', isDark),
+          // 4. Venue & Instructor Remarks Card
+          _buildSectionTitle('VENUE & INSTRUCTOR REMARKS', isDark),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(18),
@@ -609,34 +650,100 @@ class ScheduleDetailView extends ConsumerWidget {
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 3.5,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    entry.notes != null && entry.notes!.trim().isNotEmpty
-                        ? entry.notes!
-                        : 'No additional notes added for this schedule entry.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.5,
-                      color: entry.notes != null && entry.notes!.trim().isNotEmpty
-                          ? (isDark ? Colors.white : const Color(0xFF0F172A))
-                          : (isDark ? AppColors.textSecondaryDark : const Color(0xFF94A3B8)),
-                      fontStyle: entry.notes != null && entry.notes!.trim().isNotEmpty
-                          ? FontStyle.normal
-                          : FontStyle.italic,
+                // 1. Room / Location Row
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.meeting_room_rounded, color: Color(0xFF2563EB), size: 20),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Room / Venue',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            liveEntry.location != null && liveEntry.location!.trim().isNotEmpty
+                                ? liveEntry.location!
+                                : 'No room specified',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
+
+                // 2. Instructor / Teacher & Notes Row
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.person_rounded, color: Color(0xFF8B5CF6), size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Teacher / Instructor & Remarks',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            liveEntry.notes != null && liveEntry.notes!.trim().isNotEmpty
+                                ? liveEntry.notes!
+                                : 'No teacher or remarks added.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.4,
+                              fontWeight: FontWeight.w700,
+                              color: liveEntry.notes != null && liveEntry.notes!.trim().isNotEmpty
+                                  ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                                  : (isDark ? AppColors.textSecondaryDark : const Color(0xFF94A3B8)),
+                              fontStyle: liveEntry.notes != null && liveEntry.notes!.trim().isNotEmpty
+                                  ? FontStyle.normal
+                                  : FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -705,7 +812,7 @@ class ScheduleDetailView extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
+  void _confirmDelete(BuildContext context, WidgetRef ref, ScheduleEntry targetEntry) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showDialog(
@@ -733,7 +840,7 @@ class ScheduleDetailView extends ConsumerWidget {
           ],
         ),
         content: Text(
-          'Are you sure you want to delete "${entry.title}"? This action cannot be undone.',
+          'Are you sure you want to delete "${targetEntry.title}"? This action cannot be undone.',
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
@@ -754,12 +861,12 @@ class ScheduleDetailView extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
-              ref.read(scheduleListProvider.notifier).deleteSchedule(entry);
+              ref.read(scheduleListProvider.notifier).deleteSchedule(targetEntry);
               Navigator.pop(ctx); // Dialog
               Navigator.pop(context); // Detail Screen
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Deleted "${entry.title}"'),
+                  content: Text('Deleted "${targetEntry.title}"'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );

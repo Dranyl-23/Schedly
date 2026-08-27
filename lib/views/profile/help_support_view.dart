@@ -152,9 +152,13 @@ class HelpSupportView extends StatelessWidget {
                     ),
                     child: const Icon(Icons.battery_saver_rounded, color: Color(0xFF10B981), size: 22),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Battery & Alarm Setup Guide',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
                   ),
                   subtitle: Text(
                     'Brand-by-brand setup for Xiaomi, Samsung, Oppo & Vivo',
@@ -206,13 +210,20 @@ class HelpSupportView extends StatelessWidget {
                         ),
                         child: const Icon(Icons.mail_outline_rounded, color: Color(0xFF2563EB)),
                       ),
-                      title: const Text(
+                      title: Text(
                         'Email Support',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
                       ),
-                      subtitle: const Text(
+                      subtitle: Text(
                         'support@schedly.app',
-                        style: TextStyle(fontSize: 12.5),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
                       ),
                       trailing: const Icon(Icons.arrow_forward_rounded, size: 18),
                       onTap: () {
@@ -272,10 +283,15 @@ class HelpSupportView extends StatelessWidget {
         ],
       ),
       child: Theme(
-        data: ThemeData(dividerColor: Colors.transparent),
+        data: ThemeData(
+          brightness: isDark ? Brightness.dark : Brightness.light,
+          dividerColor: Colors.transparent,
+        ),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          iconColor: isDark ? Colors.white70 : const Color(0xFF64748B),
+          collapsedIconColor: isDark ? Colors.white54 : const Color(0xFF94A3B8),
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -286,7 +302,11 @@ class HelpSupportView extends StatelessWidget {
           ),
           title: Text(
             question,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
           ),
           children: [
             Text(

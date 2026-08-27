@@ -7,27 +7,41 @@ import '../config/app_config.dart';
 
 class ScheduleParserService {
   static const String _defaultPrompt = '''
-You are an expert schedule extraction AI. Analyze the provided schedule image (which could be a university class timetable, a work shift roster, a hospital/security duty roster, or a handwritten schedule).
+You are an expert schedule extraction AI. Analyze the provided schedule image (which could be a university class timetable, certificate of matriculation / enrollment form, study load, work shift roster, hospital/security duty roster, or handwritten schedule).
 
-Extract all schedule events/shifts and output ONLY a valid JSON array matching this exact schema:
+Extract EVERY schedule event/shift without skipping any rows, subjects, lectures, or laboratory sessions. Output ONLY a valid JSON array matching this exact schema:
 [
   {
-    "title": "string (subject code, job role, or duty description e.g. IT 101, Cashier Duty)",
+    "title": "string (subject code, course name, job role, or duty description e.g. ITIAS2, IT SAM, Cashier Duty)",
     "category": "string (one of: 'class', 'work', 'duty', 'custom')",
-    "daysOfWeek": [number (integers 1 to 7 where 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday. If an entry is on MWF, output [1, 3, 5]. If TTH, output [2, 4])],
-    "startTime": "string (24-hour format HH:mm e.g. 08:30, 14:00, 22:00)",
-    "endTime": "string (24-hour format HH:mm e.g. 10:00, 17:30, 06:00)",
+    "daysOfWeek": [number (integers 1 to 7 where 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday)],
+    "startTime": "string (24-hour format HH:mm e.g. 07:00, 08:30, 13:00, 17:00, 22:00)",
+    "endTime": "string (24-hour format HH:mm e.g. 09:00, 10:00, 15:30, 19:00, 06:00)",
     "spansNextDay": boolean (true if shift crosses midnight e.g. 22:00 to 06:00, false otherwise),
-    "location": "string or null (room number, branch, station, or building)",
-    "notes": "string or null (professor, instructor, shift supervisor, section, or remarks)"
+    "location": "string or null (room number, venue, lab e.g. CLB 4, LAN LAB, Room 302)",
+    "notes": "string or null (course description, professor/instructor name e.g. Information Assurance and Security 2 / Daryl Ivan Hisola)"
   }
 ]
 
-Rules:
-1. Return ONLY the raw JSON array. Do not include markdown codeblocks (no ```json).
-2. Resolve common Philippine/international school day abbreviations: M=1, T=2, W=3, TH/Th=4, F=5, S/Sa=6, Su=7.
-3. Convert all 12-hour AM/PM times into 24-hour HH:mm format (e.g. 7:30 AM -> 07:30, 1:00 PM -> 13:00, 5:30 PM -> 17:30).
-4. If an entry occurs on multiple days (e.g. Mon, Wed, Fri), group them into a single entry with daysOfWeek: [1, 3, 5].
+Critical Extraction Rules:
+1. Extract ALL entries on the document. Do NOT truncate or omit any course, lecture, laboratory session, or day (especially Thursday, Saturday, Sunday, Friday).
+2. Separate Lecture and Lab entries into distinct items if they have different times/days (e.g. ITIAS2 Lecture on Thursday 5:00-7:00 PM and ITIAS2L Lab on Thursday 7:00-9:00 PM).
+3. Resolve common Philippine and international university day abbreviations:
+   - Monday: M, Mon -> [1]
+   - Tuesday: T, Tu, Tue -> [2]
+   - Wednesday: W, Wed -> [3]
+   - Thursday: TH, Th, Thu, H, R, TR (if Thursday) -> [4]
+   - Friday: F, Fri -> [5]
+   - Saturday: S, Sa, Sat -> [6]
+   - Sunday: SU, Su, Sun -> [7]
+   - Combined days:
+     - TTH / T-TH / T/TH / TR -> [2, 4] (Tuesday & Thursday)
+     - MWF / M-W-F / M/W/F -> [1, 3, 5] (Monday, Wednesday, Friday)
+     - MW / M-W -> [1, 3]
+     - FS / F-S -> [5, 6]
+     - SS / S-SU / Sat-Sun -> [6, 7]
+4. Convert all 12-hour AM/PM times into 24-hour HH:mm format (e.g. 7:00 AM -> 07:00, 1:00 PM -> 13:00, 5:00 PM -> 17:00, 7:00 PM -> 19:00).
+5. Output ONLY the raw JSON array. Do not include markdown codeblocks (no ```json).
 ''';
 
   /// Parses schedule from image/PDF bytes using Gemini Multimodal AI
@@ -57,14 +71,12 @@ Rules:
       normalizedMime = 'image/jpeg';
     }
 
-    // List of verified active free-tier Flash models (fastest, high RPM, free)
+    // List of verified active models for this API Key
     final modelNames = [
-      'gemini-3.6-flash',
-      'gemini-3.7-flash',
+      'gemini-flash-latest',
+      'gemini-flash-lite-latest',
       'gemini-3.5-flash',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
+      'gemini-3.6-flash',
     ];
     String? rawResponseText;
     String lastErrorMessage = '';
