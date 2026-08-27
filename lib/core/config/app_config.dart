@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConfig {
-  /// Securely retrieves Google Gemini AI API Key from .env file
+  /// Securely retrieves Google Gemini AI API Key exclusively from .env file
   static String get defaultGeminiApiKey {
     try {
       final envKey = dotenv.env['GEMINI_API_KEY'];
@@ -12,7 +12,7 @@ class AppConfig {
     return '';
   }
 
-  /// Retrieves the Google OAuth server/web client ID from .env file.
+  /// Retrieves the Google OAuth server/web client ID exclusively from .env file.
   /// Used by GoogleSignIn to validate ID tokens server-side.
   static String get googleOAuthClientId {
     try {

@@ -154,17 +154,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           ),
                         )
                             .animate()
-                            .fadeIn(duration: 650.ms, curve: Curves.easeOut)
+                            .fadeIn(duration: 600.ms, curve: Curves.easeOut)
                             .scale(
-                              begin: const Offset(0.8, 0.8),
+                              begin: const Offset(0.85, 0.85),
                               end: const Offset(1.0, 1.0),
-                              duration: 800.ms,
+                              duration: 700.ms,
                               curve: Curves.easeOutBack,
-                            )
-                            .shimmer(
-                              delay: 850.ms,
-                              duration: 1200.ms,
-                              color: Colors.white.withValues(alpha: 0.3),
                             ),
                       ),
 

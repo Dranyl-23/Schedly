@@ -90,5 +90,5 @@ app.*.map.json
 **/android/.gradle/
 **/android/local.properties
 
-# Environment Variables
-# .env is tracked via placeholder for asset packager
+# Environment Variables (Secrets)
+.env

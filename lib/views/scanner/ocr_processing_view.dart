@@ -339,69 +339,69 @@ class _OcrProcessingViewState extends ConsumerState<OcrProcessingView>
   }
 
   Widget _buildTargetScanner(bool isDark) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final scale = 0.94 + (_pulseController.value * 0.10);
-
-        return Container(
-          width: 136,
-          height: 136,
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.14 * _pulseController.value + 0.08),
-                blurRadius: 28,
-                spreadRadius: 2,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    return Container(
+      width: 136,
+      height: 136,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+            blurRadius: 24,
+            spreadRadius: 2,
+            offset: const Offset(0, 6),
           ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // 4 Perfectly Symmetrical Blue Corner Brackets matching mockup
-              Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.all(22.0),
-                  child: CustomPaint(
-                    painter: _CornerBracketsPainter(color: const Color(0xFF2563EB)),
-                  ),
-                ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 4 Perfectly Symmetrical Blue Corner Brackets matching mockup
+          const Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.all(22.0),
+              child: CustomPaint(
+                painter: _CornerBracketsPainter(color: Color(0xFF2563EB)),
               ),
+            ),
+          ),
 
-              // Pulsing Center Camera Target Circle with subtle glow
-              Transform.scale(
+          // Pulsing Center Camera Target Circle with subtle glow
+          AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, child) {
+              final scale = 0.94 + (_pulseController.value * 0.10);
+              return Transform.scale(
                 scale: scale,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.06),
-                    border: Border.all(color: const Color(0xFF2563EB), width: 3.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.2),
-                        blurRadius: 8,
-                      ),
-                    ],
+                child: child,
+              );
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFF2563EB).withValues(alpha: 0.06),
+                border: Border.all(color: const Color(0xFF2563EB), width: 3.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x332563EB),
+                    blurRadius: 8,
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
 
 class _CornerBracketsPainter extends CustomPainter {
   final Color color;
-  _CornerBracketsPainter({required this.color});
+  const _CornerBracketsPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
