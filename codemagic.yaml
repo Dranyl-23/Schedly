@@ -57,13 +57,21 @@
       - name: Run Flutter Analyzer & Tests
         script: |
           flutter test
-      - name: Build iOS IPA (Release)
+      - name: Build iOS Application Payload
         script: |
-          flutter build ipa --release --no-codesign
+          flutter build ios --release --no-codesign
+      - name: Package iOS Release IPA
+        script: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r Reminda.ipa Payload
+          mkdir -p "$CM_BUILD_DIR/build/ios/ipa"
+          cp Reminda.ipa "$CM_BUILD_DIR/build/ios/ipa/"
+          cd "$CM_BUILD_DIR"
     artifacts:
       - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
-      - build/ios/archive/*.xcarchive
+      - build/ios/iphoneos/Reminda.ipa
     publishing:
       email:
         recipients:
