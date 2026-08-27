@@ -149,15 +149,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         // Automatically restore existing cloud setup so returning users skip workspace setup!
-        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
-        // Automatically pull and sync all cloud schedules and profiles!
-        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
-        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+        try {
+          await ref
+              .read(userSetupProvider.notifier)
+              .checkAndRestoreCloudSetup(user.uid)
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('checkAndRestoreCloudSetup error: $e');
+        }
+        try {
+          await ref
+              .read(firestoreSyncServiceProvider)
+              .pullAndSyncAll()
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('pullAndSyncAll error: $e');
+        }
+        try {
+          ref.read(scheduleListProvider.notifier).refreshFromCloud();
+        } catch (e) {
+          debugPrint('refreshFromCloud error: $e');
+        }
       }
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
-      if (error != null) {
+      if (error != null && error.isNotEmpty) {
         _showError(error);
       }
     }
@@ -187,14 +204,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
-        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
-        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+        try {
+          await ref
+              .read(userSetupProvider.notifier)
+              .checkAndRestoreCloudSetup(user.uid)
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('checkAndRestoreCloudSetup error: $e');
+        }
+        try {
+          await ref
+              .read(firestoreSyncServiceProvider)
+              .pullAndSyncAll()
+              .timeout(const Duration(seconds: 3));
+        } catch (e) {
+          debugPrint('pullAndSyncAll error: $e');
+        }
+        try {
+          ref.read(scheduleListProvider.notifier).refreshFromCloud();
+        } catch (e) {
+          debugPrint('refreshFromCloud error: $e');
+        }
       }
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
-      if (error != null) {
+      if (error != null && error.isNotEmpty) {
         _showError(error);
       }
     }
