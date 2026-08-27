@@ -8,9 +8,10 @@
       xcode: latest
       cocoapods: default
     scripts:
-      - name: Set up local.properties
+      - name: Set up local.properties and environment
         script: |
           echo "flutter.sdk=$FLUTTER_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+          touch .env
       - name: Get Flutter packages
         script: |
           flutter packages pub get
@@ -44,6 +45,9 @@
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Set up environment
+        script: |
+          touch .env
       - name: Get Flutter packages
         script: |
           flutter packages pub get
