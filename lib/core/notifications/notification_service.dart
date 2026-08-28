@@ -234,7 +234,7 @@ class NotificationService {
                 interruptionLevel: InterruptionLevel.timeSensitive,
               ),
             ),
-            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            androidScheduleMode: AndroidScheduleMode.alarmClock,
             uiLocalNotificationDateInterpretation:
                 UILocalNotificationDateInterpretation.absoluteTime,
             matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
@@ -284,16 +284,32 @@ class NotificationService {
       minute,
     );
 
-    while (scheduledDate.weekday != dayOfWeek || scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 1));
-      scheduledDate = tz.TZDateTime(
-        tz.local,
-        scheduledDate.year,
-        scheduledDate.month,
-        scheduledDate.day,
-        hour,
-        minute,
-      );
+    // If today is the target weekday
+    if (scheduledDate.weekday == dayOfWeek) {
+      // If scheduled time is within the current minute or up to 60s in the past (e.g. testing right now)
+      if (scheduledDate.isBefore(now)) {
+        final diff = now.difference(scheduledDate);
+        if (diff.inMinutes == 0 && diff.inSeconds <= 55) {
+          // Trigger test alarm 2 seconds from now
+          return now.add(const Duration(seconds: 2));
+        } else {
+          // Time on this weekday has already passed, schedule for next week (+7 days)
+          scheduledDate = scheduledDate.add(const Duration(days: 7));
+        }
+      }
+    } else {
+      // Find the next matching weekday in the future
+      while (scheduledDate.weekday != dayOfWeek || scheduledDate.isBefore(now)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+        scheduledDate = tz.TZDateTime(
+          tz.local,
+          scheduledDate.year,
+          scheduledDate.month,
+          scheduledDate.day,
+          hour,
+          minute,
+        );
+      }
     }
 
     return scheduledDate;
