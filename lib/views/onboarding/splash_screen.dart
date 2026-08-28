@@ -65,10 +65,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   void _navigateToNext() {
+    if (!mounted) return;
+    final user = FirebaseAuth.instance.currentUser;
     final auth = ref.read(authProvider);
     final isSetupDone = ref.read(userSetupProvider).isSetupCompleted;
+
+    // Check direct Firebase Auth instance and local state
+    final bool isLoggedIn = user != null || auth.isLoggedIn || auth.isGuest;
+
     final Widget targetScreen;
-    if (auth.isLoggedIn) {
+    if (isLoggedIn) {
       targetScreen = isSetupDone ? const MainNavigationShell() : const WorkspaceSetupScreen();
     } else if (auth.isOnboarded) {
       targetScreen = const LoginScreen();
@@ -82,12 +88,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     );
   }
 
+  Widget _buildSparkle({required double size, required double opacity}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: opacity),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: _navigateToNext,
         child: Container(
           width: double.infinity,
@@ -114,18 +132,36 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   height: 280,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.16),
+                    color: const Color(0xFF60A5FA).withValues(alpha: 0.18),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF38BDF8).withValues(alpha: 0.28),
-                        blurRadius: 120,
-                        spreadRadius: 50,
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.28),
+                        blurRadius: 100,
+                        spreadRadius: 30,
                       ),
                     ],
                   ),
                 ),
               ),
 
+              // Floating Stars/Particles Background Subtle Accents
+              Positioned(
+                top: screenSize.height * 0.12,
+                left: 40,
+                child: _buildSparkle(size: 6, opacity: 0.4),
+              ),
+              Positioned(
+                top: screenSize.height * 0.28,
+                right: 50,
+                child: _buildSparkle(size: 8, opacity: 0.5),
+              ),
+              Positioned(
+                top: screenSize.height * 0.45,
+                left: 60,
+                child: _buildSparkle(size: 5, opacity: 0.35),
+              ),
+
+              // Main Foreground Content
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 28.0),
@@ -163,7 +199,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                             ),
                       ),
 
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 36),
 
                       // Tagline: "Scan. Parse. Schedule."
                       const Text(
@@ -197,7 +233,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           .fadeIn(delay: 450.ms, duration: 550.ms)
                           .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
                       // Subtitle
                       Padding(
@@ -206,7 +242,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           'Turn any schedule screenshot\ninto reminders you\'ll never miss.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14.5,
                             fontWeight: FontWeight.w500,
                             color: Colors.white.withValues(alpha: 0.85),
                             height: 1.45,
@@ -218,6 +254,56 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
 
                       const Spacer(flex: 3),
+
+                      // Touch Screen to Continue Prompt
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.28),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.touch_app_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Touch screen to continue',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white.withValues(alpha: 0.95),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                          .fadeIn(delay: 700.ms, duration: 500.ms)
+                          .scale(
+                            begin: const Offset(0.96, 0.96),
+                            end: const Offset(1.04, 1.04),
+                            duration: 1100.ms,
+                            curve: Curves.easeInOut,
+                          ),
+
+                      const SizedBox(height: 28),
                     ],
                   ),
                 ),

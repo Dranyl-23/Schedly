@@ -79,7 +79,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final cachedPhoto = _box.get('userPhotoUrl') as String?;
 
     final currentUser = _firebaseAuth.currentUser;
-    final loggedIn = currentUser != null || isGuestMode || (_box.get('isLoggedIn', defaultValue: false) as bool);
+    final bool hasCachedLogin = _box.get('isLoggedIn', defaultValue: false) as bool;
+    final loggedIn = currentUser != null || isGuestMode || hasCachedLogin;
 
     state = AuthState(
       isOnboarded: onboarded,
@@ -100,6 +101,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
         await _box.put('isGuestLogin', false);
         await _box.put('isLoggedIn', true);
+        await _box.put('isOnboarded', true);
         await _box.put('userName', name);
         await _box.put('userEmail', email);
         if (photo != null) await _box.put('userPhotoUrl', photo);
@@ -117,8 +119,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       } else {
         final wasGuest = _box.get('isGuestLogin', defaultValue: false) as bool;
-        if (!wasGuest) {
-          await _box.put('isLoggedIn', false);
+        final wasLoggedIn = _box.get('isLoggedIn', defaultValue: false) as bool;
+
+        // Only clear login if currentUser is also confirmed null and not in guest mode
+        if (!wasGuest && !wasLoggedIn && _firebaseAuth.currentUser == null) {
           state = state.copyWith(
             isLoggedIn: false,
             isGuest: false,
