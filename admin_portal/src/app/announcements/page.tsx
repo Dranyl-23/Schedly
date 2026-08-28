@@ -155,13 +155,33 @@ export default function AnnouncementsPage() {
   const getTypeStyle = (t: string) => {
     switch (t) {
       case "warning":
-        return { bg: "bg-amber-50 border-amber-200 text-amber-800", icon: AlertTriangle, badge: "bg-amber-100 text-amber-800" };
+        return { 
+          bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200", 
+          icon: AlertTriangle, 
+          badge: "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60",
+          accent: "text-amber-600 dark:text-amber-400"
+        };
       case "urgent":
-        return { bg: "bg-rose-50 border-rose-200 text-rose-800", icon: Flame, badge: "bg-rose-100 text-rose-800" };
+        return { 
+          bg: "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200", 
+          icon: Flame, 
+          badge: "bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800/60",
+          accent: "text-rose-600 dark:text-rose-400"
+        };
       case "promo":
-        return { bg: "bg-indigo-50 border-indigo-200 text-indigo-800", icon: Sparkles, badge: "bg-indigo-100 text-indigo-800" };
+        return { 
+          bg: "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-200", 
+          icon: Sparkles, 
+          badge: "bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/60",
+          accent: "text-indigo-600 dark:text-indigo-400"
+        };
       default:
-        return { bg: "bg-blue-50 border-blue-200 text-blue-800", icon: Info, badge: "bg-blue-100 text-blue-800" };
+        return { 
+          bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60 text-blue-900 dark:text-blue-200", 
+          icon: Info, 
+          badge: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800/60",
+          accent: "text-blue-600 dark:text-blue-400"
+        };
     }
   };
 
@@ -426,19 +446,35 @@ export default function AnnouncementsPage() {
                 </div>
 
                 {/* Live Mobile In-App Preview */}
-                <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-[#25273A] border border-slate-200 dark:border-[#282A3D] space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <Smartphone className="w-3.5 h-3.5 text-slate-400" />
+                <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-[#202231] border border-slate-200 dark:border-[#282A3D] space-y-2">
+                  <p className="text-[10px] font-bold text-slate-600 dark:text-[#9499B0] uppercase tracking-wider flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-blue-500" />
                     Live Mobile Banner Preview
                   </p>
-                  <div className={`p-3 rounded-xl border text-xs ${getTypeStyle(type).bg}`}>
-                    <p className="font-extrabold text-slate-900 dark:text-white">{title || "Your Announcement Title Here"}</p>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">{message || "Your message will appear here for all users in the mobile app."}</p>
-                    {actionLabel && (
-                      <span className="inline-block mt-2 px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[10px]">
-                        {actionLabel}
-                      </span>
-                    )}
+                  <div className={`p-3.5 rounded-2xl border shadow-xs transition-all ${getTypeStyle(type).bg}`}>
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 shrink-0">
+                        {(() => {
+                          const IconComponent = getTypeStyle(type).icon;
+                          return <IconComponent className={`w-4 h-4 ${getTypeStyle(type).accent}`} />;
+                        })()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-extrabold text-xs text-slate-900 dark:text-white leading-tight">
+                          {title || "Your Announcement Title Here"}
+                        </p>
+                        <p className="text-[11px] text-slate-600 dark:text-[#CBD5E1] mt-1 leading-relaxed">
+                          {message || "Your message will appear here for all users in the mobile app."}
+                        </p>
+                        {actionLabel && (
+                          <div className="mt-2.5">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-blue-600 dark:bg-blue-500 text-white font-bold text-[10px] shadow-xs">
+                              {actionLabel}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 

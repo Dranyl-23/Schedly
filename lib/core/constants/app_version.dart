@@ -2,7 +2,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class AppVersion {
   static String _versionName = '1.0.0';
-  static String _buildNumber = '9';
+  static String _buildNumber = '10';
   static const String releaseType = 'Production Release';
 
   static Future<void> initialize() async {
