@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UserFeedback } from "@/lib/types";
@@ -29,6 +30,11 @@ export default function FeedbacksPage() {
   const [selectedStatus, setSelectedStatus] = useState<"all" | "pending" | "in-progress" | "resolved">("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [replyModalFeedback, setReplyModalFeedback] = useState<UserFeedback | null>(null);
+  useEffect(() => {
+    if (replyModalFeedback) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [replyModalFeedback]);
   const [replyText, setReplyText] = useState("");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -379,8 +385,8 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
         )}
 
         {/* Interactive Reply Modal */}
-        {replyModalFeedback && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        {replyModalFeedback && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
@@ -424,7 +430,8 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </main>
     </>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -23,14 +25,29 @@ export function ConfirmModal({
   onCancel,
   variant = "danger",
 }: ConfirmModalProps) {
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in zoom-in-95 duration-200">
+  if (!isOpen || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in zoom-in-95 duration-150"
+      >
         <button
+          type="button"
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -48,14 +65,14 @@ export function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-[#9499B0] hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors"
+            className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-[#9499B0] hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors cursor-pointer"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-bold text-white shadow-sm transition-all hover:scale-102 ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold text-white shadow-sm transition-all hover:scale-102 cursor-pointer ${
               variant === "danger"
                 ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
                 : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
@@ -65,6 +82,7 @@ export function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

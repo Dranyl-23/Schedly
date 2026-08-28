@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 import { useEffect, useState, useRef } from "react";
 import { 
   collection, 
@@ -47,6 +49,14 @@ export default function InstitutionsPage() {
   const itemsPerPage = 24;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isModalOpen]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -119,8 +129,45 @@ export default function InstitutionsPage() {
     setIsModalOpen(true);
   };
 
-  // Client-side instant logo thumbnail compressor (under 30KB WebP)
-  const compressImage = (file: File): Promise<string> => {
+  // Client-side universal image thumbnail compressor (supports AVIF, WebP, PNG, JPG, SVG, etc.)
+  const compressImage = async (file: File): Promise<string> => {
+    try {
+      if (typeof window !== "undefined" && "createImageBitmap" in window) {
+        const bitmap = await createImageBitmap(file);
+        const canvas = document.createElement("canvas");
+        const maxDim = 256;
+        let width = bitmap.width;
+        let height = bitmap.height;
+
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(bitmap, 0, 0, width, height);
+          try {
+            return canvas.toDataURL("image/webp", 0.85);
+          } catch {
+            return canvas.toDataURL("image/png");
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("createImageBitmap fallback:", e);
+    }
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -149,14 +196,19 @@ export default function InstitutionsPage() {
           if (ctx) {
             ctx.clearRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
-            // Export as WebP or PNG data URL (very small, typically 10-25KB)
-            const dataUrl = canvas.toDataURL("image/webp", 0.85);
-            resolve(dataUrl);
+            try {
+              resolve(canvas.toDataURL("image/webp", 0.85));
+            } catch {
+              resolve(canvas.toDataURL("image/png"));
+            }
           } else {
             resolve(event.target?.result as string);
           }
         };
-        img.onerror = () => reject(new Error("Failed to process image"));
+        img.onerror = () => {
+          // If image element fails, return raw dataUrl directly
+          resolve(event.target?.result as string);
+        };
         img.src = event.target?.result as string;
       };
       reader.onerror = (err) => reject(err);
@@ -164,10 +216,11 @@ export default function InstitutionsPage() {
     });
   };
 
-  // Image Upload Handler
+  // Image Upload Handler (Supports all formats: AVIF, WEBP, PNG, JPG, SVG, GIF, etc.)
   const handleFileUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      showToast("Please select a valid image file (.png, .jpg, .webp).");
+    const isImage = file.type.startsWith("image/") || /\.(avif|webp|png|jpe?g|svg|gif|bmp|ico)$/i.test(file.name);
+    if (!isImage) {
+      showToast("Please select a valid image file (.avif, .png, .jpg, .webp).");
       return;
     }
 
@@ -598,8 +651,8 @@ export default function InstitutionsPage() {
         )}
 
         {/* Add / Edit Institution Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        {isModalOpen && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
@@ -636,7 +689,7 @@ export default function InstitutionsPage() {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept="image/*"
+                    accept="image/*,.avif,.webp,.png,.jpg,.jpeg,.svg,.gif,.bmp,.ico"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
@@ -691,7 +744,7 @@ export default function InstitutionsPage() {
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Drag & drop logo image here, or <span className="text-blue-600 underline">browse</span>
                         </p>
-                        <p className="text-[10px] text-slate-400">PNG, JPG, or WEBP (Transparent background recommended)</p>
+                        <p className="text-[10px] text-slate-400">AVIF, PNG, JPG, WEBP, or SVG (Transparent background recommended)</p>
                       </div>
                     )}
                   </div>
@@ -813,7 +866,8 @@ export default function InstitutionsPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </main>
     </>

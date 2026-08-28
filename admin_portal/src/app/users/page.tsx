@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 import { useEffect, useState } from "react";
 import { 
   collection, 
@@ -32,6 +34,11 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [inspectingUser, setInspectingUser] = useState<UserAccount | null>(null);
+  useEffect(() => {
+    if (inspectingUser) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [inspectingUser]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Custom Confirmation Modal State
@@ -259,8 +266,8 @@ export default function UsersPage() {
         )}
 
         {/* User Schedule Inspector Drawer / Modal */}
-        {inspectingUser && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        {inspectingUser && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-3xl bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-[#282A3D]">
@@ -413,7 +420,8 @@ export default function UsersPage() {
                 </a>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </main>
     </>
