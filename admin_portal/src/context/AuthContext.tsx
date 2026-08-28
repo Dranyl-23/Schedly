@@ -20,7 +20,6 @@ interface AuthContextType {
 
 // Authorized Admin Emails
 const AUTHORIZED_ADMINS = [
-  "alfielynard25@gmail.com",
   "alfielynard23@gmail.com",
   "alfielynardrosalita@gmail.com",
   "dranyl23@gmail.com"
