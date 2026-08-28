@@ -43,8 +43,9 @@ export default function FeedbacksPage() {
   const itemsPerPage = 9;
 
   useEffect(() => {
-    const q = query(collection(db, "user_feedback"), orderBy("timestamp", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    // Index-free direct collection listener with robust client-side sort
+    const colRef = collection(db, "user_feedback");
+    const unsub = onSnapshot(colRef, (snap) => {
       const list: UserFeedback[] = [];
       snap.forEach((doc) => {
         const data = doc.data();
@@ -54,6 +55,14 @@ export default function FeedbacksPage() {
           ...data 
         } as UserFeedback);
       });
+
+      // Sort newest first by timestamp or createdAtIso
+      list.sort((a, b) => {
+        const tA = (a.timestamp as any)?.toMillis ? (a.timestamp as any).toMillis() : (a.createdAtIso ? new Date(a.createdAtIso).getTime() : 0);
+        const tB = (b.timestamp as any)?.toMillis ? (b.timestamp as any).toMillis() : (b.createdAtIso ? new Date(b.createdAtIso).getTime() : 0);
+        return tB - tA;
+      });
+
       setFeedbacks(list);
       setIsLoading(false);
     }, (err: any) => {

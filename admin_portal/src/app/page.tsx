@@ -65,7 +65,7 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     // 1. Feedbacks Stream
-    const qF = query(collection(db, "user_feedback"), orderBy("timestamp", "desc"));
+    const qF = collection(db, "user_feedback");
     const unsubF = onSnapshot(qF, (snap) => {
       const list: UserFeedback[] = [];
       snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() } as UserFeedback));
