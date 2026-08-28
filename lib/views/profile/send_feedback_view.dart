@@ -99,6 +99,7 @@ class _SendFeedbackViewState extends ConsumerState<SendFeedbackView> {
         'contactEmail': _emailController.text.trim(),
         'userId': user?.uid ?? (auth.isGuest ? 'guest' : 'anonymous'),
         'userName': user?.displayName ?? (auth.isGuest ? 'Guest User' : 'User'),
+        'userPhotoUrl': user?.photoURL ?? '',
         'appVersion': AppVersion.fullVersion,
         'platform': Platform.isAndroid ? 'Android' : (Platform.isIOS ? 'iOS' : 'Other'),
         'timestamp': FieldValue.serverTimestamp(),

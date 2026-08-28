@@ -7,6 +7,8 @@ export interface UserFeedback {
   contactEmail: string;
   userName: string;
   userId: string;
+  userPhotoUrl?: string;
+  photoUrl?: string;
   appVersion: string;
   platform: string;
   createdAtIso?: string;

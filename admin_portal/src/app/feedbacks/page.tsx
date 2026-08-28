@@ -1,10 +1,31 @@
 "use client";
 
+function formatFeedbackDate(timestamp: any, createdAtIso?: string): string {
+  try {
+    if (timestamp?.toMillis) {
+      return new Date(timestamp.toMillis()).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    if (timestamp?.seconds) {
+      return new Date(timestamp.seconds * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    if (createdAtIso) {
+      return new Date(createdAtIso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    if (typeof timestamp === "string") {
+      const d = new Date(timestamp);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      }
+    }
+  } catch (_) {}
+  return "Just now";
+}
+
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { UserFeedback } from "@/lib/types";
+import { UserFeedback, UserAccount } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomDropdown } from "@/components/CustomDropdown";
@@ -42,7 +63,22 @@ export default function FeedbacksPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
+  const [userPhotos, setUserPhotos] = useState<Record<string, string>>({});
+
   useEffect(() => {
+    // Listen to users collection to automatically enrich avatars
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      const map: Record<string, string> = {};
+      snap.forEach((d) => {
+        const u = d.data() as UserAccount;
+        if (u.photoUrl) {
+          map[d.id] = u.photoUrl;
+          if (u.email) map[u.email.toLowerCase()] = u.photoUrl;
+        }
+      });
+      setUserPhotos(map);
+    }, () => {});
+
     // Index-free direct collection listener with robust client-side sort
     const colRef = collection(db, "user_feedback");
     const unsub = onSnapshot(colRef, (snap) => {
@@ -70,7 +106,7 @@ export default function FeedbacksPage() {
       setIsLoading(false);
     });
 
-    return () => unsub();
+    return () => { unsub(); unsubUsers(); };
   }, []);
 
   const showToast = (msg: string) => {
@@ -263,9 +299,21 @@ export default function FeedbacksPage() {
                       {/* User Header & Star Rating */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-xs">
-                            {(f.userName || "U")[0].toUpperCase()}
-                          </div>
+                          {(() => {
+                            const photo = f.userPhotoUrl || f.photoUrl || userPhotos[f.userId] || (f.contactEmail ? userPhotos[f.contactEmail.toLowerCase()] : null);
+                            return photo ? (
+                              <img
+                                src={photo}
+                                alt={f.userName || "User"}
+                                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-[#282A3D] shadow-xs shrink-0"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                                {(f.userName || "U")[0].toUpperCase()}
+                              </div>
+                            );
+                          })()}
                           <div>
                             <h4 className="font-extrabold text-sm text-slate-900 dark:text-white dark:text-white">{f.userName || "User"}</h4>
                             <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
@@ -293,11 +341,9 @@ export default function FeedbacksPage() {
                         <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300">
                           {f.category || "General Feedback"}
                         </span>
-                        {f.timestamp && (
-                          <span className="text-[10px] text-slate-400 font-medium">
-                            {new Date(f.timestamp).toLocaleDateString()}
-                          </span>
-                        )}
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {formatFeedbackDate(f.timestamp, f.createdAtIso)}
+                        </span>
                       </div>
 
                       {/* Comment Message Body */}
