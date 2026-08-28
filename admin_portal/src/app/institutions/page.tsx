@@ -178,7 +178,6 @@ export default function InstitutionsPage() {
       const optimizedBase64 = await compressImage(file);
       setLogoUrl(optimizedBase64);
       setUploadSuccess(true);
-      showToast("Logo attached! Click 'Save Changes' to apply.");
     } catch (err: any) {
       console.error("Logo processing error:", err);
       showToast("Failed to process image: " + err.message);
