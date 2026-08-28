@@ -119,10 +119,55 @@ export default function InstitutionsPage() {
     setIsModalOpen(true);
   };
 
-  // Free Cloud Image Upload Handler
+  // Client-side instant logo thumbnail compressor (under 30KB WebP)
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const maxDim = 256;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.clearRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            // Export as WebP or PNG data URL (very small, typically 10-25KB)
+            const dataUrl = canvas.toDataURL("image/webp", 0.85);
+            resolve(dataUrl);
+          } else {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = () => reject(new Error("Failed to process image"));
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Image Upload Handler
   const handleFileUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      showToast("Please upload an image file (.png, .jpg, .webp).");
+      showToast("Please select a valid image file (.png, .jpg, .webp).");
       return;
     }
 
@@ -130,46 +175,19 @@ export default function InstitutionsPage() {
       setIsUploading(true);
       setUploadSuccess(false);
 
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const imgbbKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
-      const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data && data.data.url) {
-        const publicCdnUrl = data.data.display_url || data.data.url;
-        setLogoUrl(publicCdnUrl);
-        setUploadSuccess(true);
-        showToast("Logo uploaded to free CDN successfully!");
-      } else {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setLogoUrl(reader.result as string);
-          setUploadSuccess(true);
-          showToast("Logo loaded locally!");
-        };
-        reader.readAsDataURL(file);
-      }
+      const optimizedBase64 = await compressImage(file);
+      setLogoUrl(optimizedBase64);
+      setUploadSuccess(true);
+      showToast("Logo attached! Click 'Save Changes' to apply.");
     } catch (err: any) {
-      console.error("Upload error:", err);
-      const reader = new FileReader();
-      reader.onload = () => {
-        setLogoUrl(reader.result as string);
-        setUploadSuccess(true);
-        showToast("Logo saved!");
-      };
-      reader.readAsDataURL(file);
+      console.error("Logo processing error:", err);
+      showToast("Failed to process image: " + err.message);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+    const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
@@ -189,7 +207,7 @@ export default function InstitutionsPage() {
   const handleSaveInstitution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !shortName.trim()) {
-      showToast("Please fill in the institution name and short name.");
+      showToast("Please fill in the institution name and short acronym.");
       return;
     }
 
@@ -210,7 +228,7 @@ export default function InstitutionsPage() {
         isOfficial: true,
       };
 
-      // Optimistically update local state immediately so user sees changes with 0 delay
+      // Optimistically update local state immediately
       setInstitutions((prev) => {
         const exists = prev.some((item) => item.id === docId);
         if (exists) {
@@ -236,14 +254,14 @@ export default function InstitutionsPage() {
         createdAt: serverTimestamp()
       }, { merge: true });
 
-      showToast(editingId ? "Institution updated successfully!" : "New Institution added & live to all mobile apps!");
+      showToast(editingId ? `Institution "${shortName}" updated successfully!` : `New Institution "${shortName}" added!`);
     } catch (err: any) {
       console.error("Error saving institution:", err);
       showToast("Failed to save institution: " + err.message);
     }
   };
 
-  const handleConfirmDelete = async () => {
+    const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
       await deleteDoc(doc(db, "institutions", deleteTarget.id));
