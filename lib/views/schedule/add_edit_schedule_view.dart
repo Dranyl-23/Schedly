@@ -97,17 +97,10 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
   Future<void> _save() async {
     if (_isSaving) return;
 
+    // Fix #7: activate all TextFormField validators via the Form key
+    if (!_formKey.currentState!.validate()) return;
+
     final title = _titleController.text.trim();
-    if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a schedule title.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Color(0xFFDC2626),
-        ),
-      );
-      return;
-    }
 
     if (_selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,6 +111,29 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
         ),
       );
       return;
+    }
+
+    // Fix #9: reject logically impossible time range for non-overnight shifts
+    if (!_spansNextDay) {
+      final startStr = TimeUtils.timeOfDayToString(_startTime);
+      final endStr   = TimeUtils.timeOfDayToString(_endTime);
+      final startMins = _startTime.hour * 60 + _startTime.minute;
+      final endMins   = _endTime.hour   * 60 + _endTime.minute;
+      if (endMins <= startMins) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'End time (${TimeUtils.formatTo12Hour(endStr)}) must be after '
+              'start time (${TimeUtils.formatTo12Hour(startStr)}), '
+              'or enable "Crosses midnight".',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFFDC2626),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
@@ -278,6 +294,7 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
             const SizedBox(height: 8),
             TextFormField(
               controller: _titleController,
+              maxLength: 100,
               decoration: InputDecoration(
                 hintText: _selectedCategory == ScheduleCategory.classSchedule
                     ? 'e.g. IT 101 - Programming 1'
@@ -348,8 +365,7 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              // ignore: deprecated_member_use
-                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                             ),
@@ -382,8 +398,7 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              // ignore: deprecated_member_use
-                              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                             ),
@@ -413,8 +428,7 @@ class _AddEditScheduleViewState extends ConsumerState<AddEditScheduleView> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
-                          color: AppColors.primary.withOpacity(0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

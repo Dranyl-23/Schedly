@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/time_utils.dart';
 import '../../models/schedule_category.dart';
@@ -6,8 +6,13 @@ import '../../models/schedule_entry.dart';
 
 class EditScannedEntryView extends StatefulWidget {
   final ScheduleEntry entry;
+  final bool isNew;
 
-  const EditScannedEntryView({super.key, required this.entry});
+  const EditScannedEntryView({
+    super.key,
+    required this.entry,
+    this.isNew = false,
+  });
 
   @override
   State<EditScannedEntryView> createState() => _EditScannedEntryViewState();
@@ -16,6 +21,7 @@ class EditScannedEntryView extends StatefulWidget {
 class _EditScannedEntryViewState extends State<EditScannedEntryView> {
   late TextEditingController _titleController;
   late TextEditingController _locationController;
+  late TextEditingController _inChargeController;
   late TextEditingController _notesController;
 
   late ScheduleCategory _selectedCategory;
@@ -39,7 +45,24 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
     super.initState();
     _titleController = TextEditingController(text: widget.entry.title);
     _locationController = TextEditingController(text: widget.entry.location ?? '');
-    _notesController = TextEditingController(text: widget.entry.notes ?? '');
+
+    // Parse person in charge vs additional notes from existing notes
+    final rawNotes = widget.entry.notes ?? '';
+    if (rawNotes.startsWith('Prof.') ||
+        rawNotes.startsWith('Dr.') ||
+        rawNotes.startsWith('Engr.') ||
+        rawNotes.startsWith('Supervisor') ||
+        rawNotes.startsWith('Manager') ||
+        rawNotes.startsWith('Nurse') ||
+        !rawNotes.contains('\n')) {
+      _inChargeController = TextEditingController(text: rawNotes != 'Scanned via On-Device AI' ? rawNotes : '');
+      _notesController = TextEditingController(text: '');
+    } else {
+      final lines = rawNotes.split('\n');
+      _inChargeController = TextEditingController(text: lines.first);
+      _notesController = TextEditingController(text: lines.skip(1).join('\n'));
+    }
+
     _selectedCategory = widget.entry.category;
     _selectedDays = List.from(widget.entry.daysOfWeek);
     _startTime = widget.entry.startTime;
@@ -51,6 +74,7 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
   void dispose() {
     _titleController.dispose();
     _locationController.dispose();
+    _inChargeController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -123,18 +147,224 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
       return;
     }
 
+    // Fix #9: reject impossible time range for non-overnight shifts
+    final spansNextDay = TimeUtils.checkSpansOvernight(_startTime, _endTime);
+    if (!spansNextDay) {
+      final startParts = _startTime.split(':');
+      final endParts   = _endTime.split(':');
+      final startMins  = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      final endMins    = int.parse(endParts[0])   * 60 + int.parse(endParts[1]);
+      if (endMins <= startMins) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'End time (${TimeUtils.formatTo12Hour(_endTime)}) must be after '
+              'start time (${TimeUtils.formatTo12Hour(_startTime)}), '
+              'or enable "Crosses midnight".',
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
+    final inCharge = _inChargeController.text.trim();
+    final additionalNotes = _notesController.text.trim();
+
+    String? finalNotes;
+    if (inCharge.isNotEmpty && additionalNotes.isNotEmpty) {
+      finalNotes = '$inCharge\n$additionalNotes';
+    } else if (inCharge.isNotEmpty) {
+      finalNotes = inCharge;
+    } else if (additionalNotes.isNotEmpty) {
+      finalNotes = additionalNotes;
+    }
+
     final updatedEntry = widget.entry.copyWith(
       title: title,
       category: _selectedCategory,
       daysOfWeek: _selectedDays,
       startTime: _startTime,
       endTime: _endTime,
+      spansNextDay: spansNextDay,
       location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
-      notes: _notesController.text.trim().isNotEmpty ? _notesController.text.trim() : null,
+      notes: finalNotes,
       reminders: [_selectedReminderLead],
     );
 
     Navigator.pop(context, {'entry': updatedEntry});
+  }
+
+  String _getTitleHint() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return 'e.g. Computer Programming 1';
+      case ScheduleCategory.workShift:
+        return 'e.g. Cashier Shift, Opening Crew, BPO Agent';
+      case ScheduleCategory.duty:
+        return 'e.g. ER Duty, Ward Rotation, Clinic Shift';
+      case ScheduleCategory.custom:
+        return 'e.g. Morning Workout, Department Meeting';
+    }
+  }
+
+  String _getInChargeLabel() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return 'Instructor / Professor (optional)';
+      case ScheduleCategory.workShift:
+        return 'Supervisor / Manager / Lead (optional)';
+      case ScheduleCategory.duty:
+        return 'Head Nurse / Doctor / Preceptor (optional)';
+      case ScheduleCategory.custom:
+        return 'Person-in-Charge / Officer / Lead (optional)';
+    }
+  }
+
+  String _getInChargeHint() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return 'e.g. Prof. Saragena or Dr. Santos';
+      case ScheduleCategory.workShift:
+        return 'e.g. Shift Manager, Team Lead, Supervisor';
+      case ScheduleCategory.duty:
+        return 'e.g. Dr. Reyes, Head Nurse, Charge Nurse';
+      case ScheduleCategory.custom:
+        return 'e.g. Department Head, Coach, or Officer';
+    }
+  }
+
+  IconData _getInChargeIcon() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return Icons.school_outlined;
+      case ScheduleCategory.workShift:
+        return Icons.badge_outlined;
+      case ScheduleCategory.duty:
+        return Icons.medical_services_outlined;
+      case ScheduleCategory.custom:
+        return Icons.person_pin_circle_outlined;
+    }
+  }
+
+  String _getLocationLabel() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return 'Location / Room';
+      case ScheduleCategory.workShift:
+        return 'Workplace / Branch / Station';
+      case ScheduleCategory.duty:
+        return 'Hospital / Ward / Station';
+      case ScheduleCategory.custom:
+        return 'Location / Venue / Office';
+    }
+  }
+
+  String _getLocationHint() {
+    switch (_selectedCategory) {
+      case ScheduleCategory.classSchedule:
+        return 'e.g. CLB 2, Room 304, or Online';
+      case ScheduleCategory.workShift:
+        return 'e.g. Jollibee Main Branch, Kitchen, Counter 1';
+      case ScheduleCategory.duty:
+        return 'e.g. Station 3, Ward 4, Emergency Room';
+      case ScheduleCategory.custom:
+        return 'e.g. Office 201, City Hall, Gym';
+    }
+  }
+
+  String _getReminderLabel(int minutes) {
+    switch (minutes) {
+      case 0:
+        return 'At time of event';
+      case 5:
+        return '5 minutes before';
+      case 10:
+        return '10 minutes before';
+      case 15:
+        return '15 minutes before';
+      case 30:
+        return '30 minutes before';
+      case 60:
+        return '1 hour before';
+      default:
+        return '$minutes minutes before';
+    }
+  }
+
+  void _showReminderPicker(bool isDark) {
+    final options = [
+      {'minutes': 0, 'label': 'At time of event'},
+      {'minutes': 5, 'label': '5 minutes before'},
+      {'minutes': 10, 'label': '10 minutes before'},
+      {'minutes': 15, 'label': '15 minutes before'},
+      {'minutes': 30, 'label': '30 minutes before'},
+      {'minutes': 60, 'label': '1 hour before'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Select Reminder',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                ...options.map((opt) {
+                  final int val = opt['minutes'] as int;
+                  final String label = opt['label'] as String;
+                  final bool isSelected = _selectedReminderLead == val;
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF94A3B8),
+                    ),
+                    title: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected ? const Color(0xFF2563EB) : (isDark ? Colors.white : const Color(0xFF1E293B)),
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() => _selectedReminderLead = val);
+                      Navigator.pop(ctx);
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -145,19 +375,20 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Edit Event',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        title: Text(
+          widget.isNew ? 'Add Schedule' : 'Edit Event',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
         ),
         centerTitle: true,
         elevation: 0,
         backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8FAFC),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
-            tooltip: 'Delete Event',
-            onPressed: _onDelete,
-          ),
+          if (!widget.isNew)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
+              tooltip: 'Delete Event',
+              onPressed: _onDelete,
+            ),
         ],
       ),
       body: SafeArea(
@@ -173,9 +404,10 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
                     _buildFieldLabel('Title', isDark),
                     TextField(
                       controller: _titleController,
+                      maxLength: 100,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                       decoration: InputDecoration(
-                        hintText: 'e.g. Programming 101',
+                        hintText: _getTitleHint(),
                         prefixIcon: const Icon(Icons.edit_note_rounded, size: 20, color: Color(0xFF2563EB)),
                         filled: true,
                         fillColor: isDark ? AppColors.surfaceDark : Colors.white,
@@ -192,37 +424,56 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
 
                     const SizedBox(height: 18),
 
-                    // Type / Category Selector
+                    // Type / Category Selector (Modern Choice Pills)
                     _buildFieldLabel('Type', isDark),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceDark : Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<ScheduleCategory>(
-                          value: _selectedCategory,
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                          items: ScheduleCategory.values.map((cat) {
-                            return DropdownMenuItem(
-                              value: cat,
-                              child: Row(
-                                children: [
-                                  Icon(cat.icon, size: 18, color: cat.color),
-                                  const SizedBox(width: 10),
-                                  Text(cat.shortLabel, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
-                                ],
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ScheduleCategory.values.map((cat) {
+                        final bool isSelected = _selectedCategory == cat;
+                        final Color catColor = cat.color;
+
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedCategory = cat),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? catColor.withValues(alpha: isDark ? 0.25 : 0.12)
+                                  : (isDark ? AppColors.surfaceDark : Colors.white),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected ? catColor : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                                width: isSelected ? 1.8 : 1,
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedCategory = val);
-                          },
-                        ),
-                      ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  cat.icon,
+                                  size: 17,
+                                  color: isSelected ? catColor : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                                ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  cat.shortLabel,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                    color: isSelected ? catColor : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(width: 5),
+                                  Icon(Icons.check_rounded, size: 14, color: catColor),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
 
                     const SizedBox(height: 18),
@@ -352,13 +603,13 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
 
                     const SizedBox(height: 18),
 
-                    // Location
-                    _buildFieldLabel('Location', isDark),
+                    // Location / Branch / Station
+                    _buildFieldLabel(_getLocationLabel(), isDark),
                     TextField(
                       controller: _locationController,
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                       decoration: InputDecoration(
-                        hintText: 'e.g. Room 204 or Online',
+                        hintText: _getLocationHint(),
                         prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: Color(0xFF2563EB)),
                         filled: true,
                         fillColor: isDark ? AppColors.surfaceDark : Colors.white,
@@ -375,45 +626,66 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
 
                     const SizedBox(height: 18),
 
-                    // Reminder
-                    _buildFieldLabel('Reminder', isDark),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceDark : Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedReminderLead,
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                          items: const [
-                            DropdownMenuItem(value: 0, child: Text('At time of event')),
-                            DropdownMenuItem(value: 5, child: Text('5 minutes before')),
-                            DropdownMenuItem(value: 10, child: Text('10 minutes before')),
-                            DropdownMenuItem(value: 15, child: Text('15 minutes before')),
-                            DropdownMenuItem(value: 30, child: Text('30 minutes before')),
-                            DropdownMenuItem(value: 60, child: Text('1 hour before')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedReminderLead = val);
-                          },
+                    // Universal Person-In-Charge / Supervisor / Instructor
+                    _buildFieldLabel(_getInChargeLabel(), isDark),
+                    TextField(
+                      controller: _inChargeController,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                      decoration: InputDecoration(
+                        hintText: _getInChargeHint(),
+                        prefixIcon: Icon(_getInChargeIcon(), size: 20, color: const Color(0xFF2563EB)),
+                        filled: true,
+                        fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 18),
 
-                    // Notes (Optional)
-                    _buildFieldLabel('Notes (optional)', isDark),
+                    // Reminder (Modern Tap Selector with Bottom Sheet)
+                    _buildFieldLabel('Reminder', isDark),
+                    GestureDetector(
+                      onTap: () => _showReminderPicker(isDark),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceDark : Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.notifications_active_outlined, size: 18, color: Color(0xFF2563EB)),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _getReminderLabel(_selectedReminderLead),
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                              ),
+                            ),
+                            const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF64748B)),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Additional Notes (Optional)
+                    _buildFieldLabel('Additional Notes (optional)', isDark),
                     TextField(
                       controller: _notesController,
-                      maxLines: 3,
+                      maxLines: 2,
                       style: const TextStyle(fontSize: 14),
                       decoration: InputDecoration(
-                        hintText: 'Add notes here...',
+                        hintText: 'e.g. Bring ID, wear uniform, or special tasks...',
                         filled: true,
                         fillColor: isDark ? AppColors.surfaceDark : Colors.white,
                         border: OutlineInputBorder(
@@ -457,9 +729,9 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Save Changes',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  child: Text(
+                    widget.isNew ? 'Add to Schedule' : 'Save Changes',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),
               ),

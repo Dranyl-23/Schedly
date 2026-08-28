@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/time_utils.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/filter_providers.dart';
 import '../../providers/notification_center_provider.dart';
+import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
 import 'notifications_screen.dart';
 import 'schedule_detail_view.dart';
+import 'widgets/announcement_banner.dart';
 import 'widgets/schedule_card.dart';
 import 'widgets/schedule_summary_modal.dart';
 import 'widgets/upcoming_banner.dart';
@@ -28,6 +31,39 @@ class HomeScreen extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final schedules = ref.watch(schedulesForTodayProvider);
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
+
+    final userSetup = ref.watch(userSetupProvider);
+
+    String todaySectionTitle;
+    String noTodayTitle;
+    String upcomingRoleNoun;
+
+    switch (userSetup.role.toLowerCase()) {
+      case 'duty':
+      case 'medic':
+      case 'nurs':
+        todaySectionTitle = "TODAY'S CLINICAL DUTY";
+        noTodayTitle = 'No duty shifts scheduled for today';
+        upcomingRoleNoun = 'clinical duty';
+        break;
+      case 'work':
+      case 'job':
+      case 'part':
+        todaySectionTitle = "TODAY'S WORK SHIFTS";
+        noTodayTitle = 'No work shifts scheduled for today';
+        upcomingRoleNoun = 'work shift';
+        break;
+      case 'personal':
+      case 'custom':
+        todaySectionTitle = "TODAY'S TIMETABLE";
+        noTodayTitle = 'No scheduled routine for today';
+        upcomingRoleNoun = 'routine';
+        break;
+      default:
+        todaySectionTitle = "TODAY'S SCHEDULE";
+        noTodayTitle = 'No classes scheduled for today';
+        upcomingRoleNoun = 'class';
+    }
 
     // Extract first name (e.g. "Alfie" or "Dranyl")
     final firstName = auth.userName.trim().split(' ').first;
@@ -96,7 +132,7 @@ class HomeScreen extends ConsumerWidget {
           // Greeting & Date Header
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,7 +159,12 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // Hero Next Schedule Banner
+          // Remote In-App Announcement Broadcast Banner
+          const SliverToBoxAdapter(
+            child: AnnouncementBanner(),
+          ),
+
+          // Hero Next Schedule Banner (with Live Dynamic Countdown across any day)
           const SliverToBoxAdapter(
             child: UpcomingBanner(),
           ),
@@ -132,16 +173,16 @@ class HomeScreen extends ConsumerWidget {
             child: SizedBox(height: 14),
           ),
 
-          // TODAY'S SCHEDULE Section Header
+          // Role-Adaptive Section Header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    "TODAY'S SCHEDULE",
-                    style: TextStyle(
+                  Text(
+                    todaySectionTitle,
+                    style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -173,40 +214,92 @@ class HomeScreen extends ConsumerWidget {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB).withValues(alpha: 0.08),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.event_available_rounded,
-                          size: 48,
-                          color: Color(0xFF2563EB),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No schedules scheduled for today',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Tap "+" below to scan or add classes & shifts.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final nextUpcoming = ref.watch(nextUpcomingAcrossAllDaysProvider);
+
+                      if (nextUpcoming != null) {
+                        final dayText = nextUpcoming.daysDifference == 1
+                            ? 'Tomorrow'
+                            : DateFormat('EEEE, MMM d').format(nextUpcoming.targetDateTime);
+
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.event_available_rounded,
+                                size: 48,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              noTodayTitle,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                'Your upcoming $upcomingRoleNoun for "${nextUpcoming.entry.title}" starts on $dayText at ${TimeUtils.formatTo12Hour(nextUpcoming.entry.startTime)}.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  height: 1.4,
+                                  color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.calendar_today_rounded,
+                              size: 48,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No schedules added yet',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tap "+" below to scan or add classes & shifts.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ),

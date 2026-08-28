@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/schedule_provider.dart';
 import 'ocr_processing_view.dart';
 
 class ScannerLandingView extends ConsumerStatefulWidget {
@@ -17,7 +19,29 @@ class ScannerLandingView extends ConsumerStatefulWidget {
 class _ScannerLandingViewState extends ConsumerState<ScannerLandingView> {
   final ImagePicker _picker = ImagePicker();
 
+  /// Returns true if user is in Guest Mode (uses offline engine) or has a configured Cloud AI key.
+  bool _checkApiKey() {
+    final authState = ref.read(authProvider);
+    final isGuest = authState.isGuest || !authState.isLoggedIn;
+    if (isGuest) return true; // Guest mode uses On-Device Local Offline AI directly
+
+    final hasAi = ref.read(hasAnyAiConfiguredProvider);
+    if (hasAi) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No AI engine configured.\nGo to Settings → AI Engines & API Keys to configure.',
+        ),
+        backgroundColor: Color(0xFFDC2626),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    return false;
+  }
+
   Future<void> _pickImage(ImageSource source) async {
+    if (!_checkApiKey()) return;
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
@@ -52,6 +76,7 @@ class _ScannerLandingViewState extends ConsumerState<ScannerLandingView> {
   }
 
   Future<void> _pickDocument() async {
+    if (!_checkApiKey()) return;
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -143,8 +168,80 @@ class _ScannerLandingViewState extends ConsumerState<ScannerLandingView> {
                   ),
                 ),
               ),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: 32),
+              // Quad-AI Status Indicator
+              if (!ref.watch(hasAnyAiConfiguredProvider))
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'AI Configuration Required',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF991B1B),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Configure Groq, Gemini, OpenRouter, or Cloudflare keys in Settings.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.red.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: isDark ? 0.15 : 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.bolt_rounded, size: 15, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          'Quad-AI Active: Groq · Gemini · Cloudflare · OpenRouter',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 12),
 
               // Primary Action 1: Take Photo
               SizedBox(

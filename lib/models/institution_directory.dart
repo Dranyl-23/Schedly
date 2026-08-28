@@ -355,6 +355,121 @@ class InstitutionItem {
     this.emblemInitials = '',
   });
 
+  static List<InstitutionItem> _cloudInstitutions = [];
+  static void setCloudInstitutions(List<InstitutionItem> list) {
+    _cloudInstitutions = list;
+  }
+  static List<InstitutionItem> get allCombined => [..._cloudInstitutions, ...presets];
+
+  factory InstitutionItem.fromFirestore(Map<String, dynamic> json, String docId) {
+    Color parseHex(String? hex) {
+      if (hex == null || hex.isEmpty) return const Color(0xFF2563EB);
+      final clean = hex.replaceAll('#', '');
+      final val = int.tryParse(clean, radix: 16);
+      if (val == null) return const Color(0xFF2563EB);
+      return Color(clean.length == 6 ? 0xFF000000 | val : val);
+    }
+
+    IconData parseIcon(String? cat) {
+      final c = (cat ?? '').toLowerCase();
+      if (c.contains('hospital') || c.contains('medic') || c.contains('duty')) return Icons.local_hospital_rounded;
+      if (c.contains('work') || c.contains('corp') || c.contains('job')) return Icons.business_center_rounded;
+      if (c.contains('gov')) return Icons.account_balance_rounded;
+      return Icons.school_rounded;
+    }
+
+    String catNormalized = 'school';
+    final rawCat = (json['category'] as String? ?? '').toLowerCase();
+    if (rawCat.contains('hospital') || rawCat.contains('clinic') || rawCat.contains('duty')) {
+      catNormalized = 'duty';
+    } else if (rawCat.contains('corporate') || rawCat.contains('work') || rawCat.contains('job')) {
+      catNormalized = 'work';
+    } else if (rawCat.contains('gov')) {
+      catNormalized = 'government';
+    }
+
+    return InstitutionItem(
+      id: docId,
+      name: json['name'] as String? ?? docId,
+      shortName: json['shortName'] as String? ?? '',
+      category: catNormalized,
+      countryCode: 'PH',
+      regionCode: json['regionCode'] as String? ?? 'R11',
+      city: json['city'] as String? ?? '',
+      icon: parseIcon(json['category'] as String?),
+      themeColor: parseHex(json['themeColor'] as String?),
+      logoUrl: json['logoUrl'] as String? ?? '',
+      emblemInitials: json['emblemInitials'] as String? ?? '',
+    );
+  }
+
+  /// Finds or constructs an InstitutionItem matching the user's setup or schedule
+  static InstitutionItem findByDetails({
+    required String name,
+    required String role,
+    String? category,
+  }) {
+    final lowerName = name.toLowerCase().trim();
+    if (lowerName.isNotEmpty) {
+      for (final item in allCombined) {
+        if (item.name.toLowerCase() == lowerName ||
+            item.shortName.toLowerCase() == lowerName ||
+            lowerName.contains(item.name.toLowerCase()) ||
+            lowerName.contains(item.shortName.toLowerCase()) ||
+            item.name.toLowerCase().contains(lowerName)) {
+          return item;
+        }
+      }
+    }
+
+    // Role-based fallbacks with themed badges
+    final lowerRole = role.toLowerCase();
+    if (lowerRole.contains('duty') || lowerRole.contains('medic') || lowerRole.contains('nurs')) {
+      return InstitutionItem(
+        id: 'generic_duty',
+        name: name.isNotEmpty ? name : 'Healthcare / Hospital Duty',
+        shortName: name.isNotEmpty ? name : 'Hospital Duty',
+        category: 'duty',
+        countryCode: 'PH',
+        regionCode: 'R11',
+        city: 'Digos City',
+        icon: Icons.medical_services_rounded,
+        themeColor: const Color(0xFF0EA5E9),
+        assetLogo: 'assets/logos/spmc.png',
+        emblemInitials: 'MED',
+      );
+    }
+
+    if (lowerRole.contains('work') || lowerRole.contains('job') || lowerRole.contains('part')) {
+      return InstitutionItem(
+        id: 'generic_work',
+        name: name.isNotEmpty ? name : 'Workplace / Corporate',
+        shortName: name.isNotEmpty ? name : 'Work',
+        category: 'work',
+        countryCode: 'PH',
+        regionCode: 'R11',
+        city: 'Digos City',
+        icon: Icons.work_rounded,
+        themeColor: const Color(0xFFF59E0B),
+        emblemInitials: 'WORK',
+      );
+    }
+
+    return InstitutionItem(
+      id: 'generic_school',
+      name: name.isNotEmpty ? name : 'Academic Institution',
+      shortName: name.isNotEmpty ? name : 'School',
+      category: 'school',
+      countryCode: 'PH',
+      regionCode: 'R11',
+      city: 'Digos City',
+      icon: Icons.school_rounded,
+      themeColor: const Color(0xFF2563EB),
+      assetLogo: 'assets/logos/cjc.png',
+      emblemInitials: 'SCH',
+    );
+  }
+
   static const List<InstitutionItem> presets = [
     // ══════════════════════════════════════════════════════════
     //  ALL UNIVERSITY OF MINDANAO (UM) OFFICIAL BRANCHES & CAMPUSES
@@ -7481,7 +7596,7 @@ class InstitutionItem {
     String city = '',
     String query = '',
   }) {
-    return presets.where((item) {
+    return allCombined.where((item) {
       final matchesCategory = item.category == category;
       final matchesRegion   = item.regionCode == regionCode;
       final matchesCity     = city.isEmpty || item.city.toLowerCase() == city.toLowerCase();
@@ -7492,5 +7607,75 @@ class InstitutionItem {
           item.city.toLowerCase().contains(q);
       return matchesCategory && matchesRegion && matchesCity && matchesQuery;
     }).toList();
+  }
+}
+
+class AcademicTermDetector {
+  /// Intelligently computes the current academic term, clinical rotation,
+  /// or work shift roster based on role, institution name, and current system calendar date.
+  static String computeCurrentTerm({
+    required String role,
+    required String orgName,
+    DateTime? referenceDate,
+  }) {
+    final now = referenceDate ?? DateTime.now();
+    final month = now.month;
+    final year = now.year;
+
+    final lowerRole = role.toLowerCase();
+    final lowerOrg = orgName.toLowerCase();
+
+    // 1. Hospital / Clinical Duty
+    if (lowerRole.contains('duty') ||
+        lowerRole.contains('medic') ||
+        lowerRole.contains('nurs') ||
+        lowerOrg.contains('hospital') ||
+        lowerOrg.contains('medical') ||
+        lowerOrg.contains('clinic')) {
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      return 'Clinical Duty Shift (${monthNames[month - 1]} $year)';
+    }
+
+    // 2. Work / Part-time Job / Corporate
+    if (lowerRole.contains('work') ||
+        lowerRole.contains('job') ||
+        lowerRole.contains('part') ||
+        lowerOrg.contains('corp') ||
+        (lowerOrg.contains('inc') && !lowerOrg.contains('college') && !lowerOrg.contains('school'))) {
+      return 'Work Shift Roster ($year)';
+    }
+
+    // 3. Trimester Schools (e.g. DLSU, Mapua, STI, AMA)
+    final isTrimester = lowerOrg.contains('de la salle') ||
+        lowerOrg.contains('dlsu') ||
+        lowerOrg.contains('mapua') ||
+        lowerOrg.contains('sti') ||
+        lowerOrg.contains('ama');
+
+    if (isTrimester) {
+      if (month >= 8 && month <= 11) {
+        return '1st Trimester, AY $year–${year + 1}';
+      } else if (month == 12 || (month >= 1 && month <= 3)) {
+        final ayStart = month == 12 ? year : year - 1;
+        return '2nd Trimester, AY $ayStart–${ayStart + 1}';
+      } else {
+        return '3rd Trimester, AY ${year - 1}–$year';
+      }
+    }
+
+    // 4. Semestral Schools (Standard CHED / Philippine Universities & Colleges like Cor Jesu, UM, etc.)
+    // August - December (Months 8-12): 1st Semester
+    // January - May (Months 1-5): 2nd Semester
+    // June - July (Months 6-7): Summer / Midyear
+    if (month >= 8 && month <= 12) {
+      return '1st Semester, AY $year–${year + 1}';
+    } else if (month >= 1 && month <= 5) {
+      return '2nd Semester, AY ${year - 1}–$year';
+    } else {
+      return 'Summer / Midyear, AY ${year - 1}–$year';
+    }
   }
 }

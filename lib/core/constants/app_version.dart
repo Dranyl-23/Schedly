@@ -1,12 +1,22 @@
+import 'package:package_info_plus/package_info_plus.dart';
+
 class AppVersion {
-  static const String major = '1';
-  static const String minor = '0';
-  static const String patch = '0';
-  static const int buildNumber = 2;
+  static String _versionName = '1.0.0';
+  static String _buildNumber = '9';
   static const String releaseType = 'Production Release';
 
-  static String get versionName => '$major.$minor.$patch';
-  static String get fullVersion => 'v$versionName+$buildNumber';
-  static String get displayTag => 'v$versionName ($releaseType)';
-  static String get fullWithBuild => 'v$versionName (Build $buildNumber)';
+  static Future<void> initialize() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty) _versionName = info.version;
+      if (info.buildNumber.isNotEmpty) _buildNumber = info.buildNumber;
+    } catch (_) {}
+  }
+
+  static String get versionName => _versionName;
+  static String get buildNumber => _buildNumber;
+  static String get fullVersion => 'v$_versionName+$_buildNumber';
+  static String get displayTag => 'v$_versionName+$_buildNumber ($releaseType)';
+  static String get fullWithBuild => 'v$_versionName (Build $_buildNumber)';
 }
+

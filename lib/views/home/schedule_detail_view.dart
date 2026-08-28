@@ -96,91 +96,61 @@ class ScheduleDetailView extends ConsumerWidget {
           ],
         ),
         child: SafeArea(
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  height: 50,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.35),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1D4ED8), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      final updated = await Navigator.push<bool>(
-                        context,
-                        SmoothSlideFadeRoute(
-                          page: AddEditScheduleView(initialEntry: liveEntry),
-                        ),
-                      );
-                      if (updated == true && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Schedule updated successfully!'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: Color(0xFF16A34A),
-                          ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 19),
-                    label: const Text(
-                      'Edit Schedule',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  final updated = await Navigator.push<bool>(
+                    context,
+                    SmoothSlideFadeRoute(
+                      page: AddEditScheduleView(initialEntry: liveEntry),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  );
+                  if (updated == true && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Schedule updated successfully!'),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: Color(0xFF16A34A),
                       ),
-                    ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                label: const Text(
+                  'Edit Schedule',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: SizedBox(
-                  height: 50,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _confirmDelete(context, ref, liveEntry),
-                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626), size: 19),
-                    label: const Text(
-                      'Delete',
-                      style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFFCA5A5), width: 1.5),
-                      backgroundColor: const Color(0xFFFEF2F2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -868,6 +838,14 @@ class ScheduleDetailView extends ConsumerWidget {
                 SnackBar(
                   content: Text('Deleted "${targetEntry.title}"'),
                   behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                  action: SnackBarAction(
+                    label: 'UNDO',
+                    textColor: Colors.amberAccent,
+                    onPressed: () {
+                      ref.read(scheduleListProvider.notifier).addSchedule(targetEntry);
+                    },
+                  ),
                 ),
               );
             },

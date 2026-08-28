@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
 
@@ -111,10 +111,8 @@ class DaySelectorChips extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isMatching
-              // ignore: deprecated_member_use
-              ? AppColors.primary.withOpacity(0.15)
-              // ignore: deprecated_member_use
-              : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade200),
+              ? AppColors.primary.withValues(alpha: 0.15)
+              : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade200),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isMatching ? AppColors.primary : Colors.transparent,

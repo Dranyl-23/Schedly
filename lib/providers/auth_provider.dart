@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/config/app_config.dart';
+import '../core/database/profile_repository.dart';
+import '../core/database/schedule_repository.dart';
+import '../core/database/user_sync_service.dart';
+import '../core/notifications/notification_service.dart';
 
 class AuthState {
   final bool isOnboarded;
@@ -74,20 +78,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _box = await Hive.openBox(settingsBox);
     final onboarded = _box.get('isOnboarded', defaultValue: false) as bool;
     final isGuestMode = _box.get('isGuestLogin', defaultValue: false) as bool;
-    final cachedName = _box.get('userName', defaultValue: isGuestMode ? 'Guest User' : 'Dranyl Polacas') as String;
-    final cachedEmail = _box.get('userEmail', defaultValue: isGuestMode ? '' : 'dranyl@example.com') as String;
+    final cachedName = _box.get('userName', defaultValue: isGuestMode ? 'Guest User' : 'User') as String;
+    final cachedEmail = _box.get('userEmail', defaultValue: '') as String;
     final cachedPhoto = _box.get('userPhotoUrl') as String?;
 
     final currentUser = _firebaseAuth.currentUser;
-    final bool hasCachedLogin = _box.get('isLoggedIn', defaultValue: false) as bool;
-    final loggedIn = currentUser != null || isGuestMode || hasCachedLogin;
+    final loggedIn = isGuestMode || currentUser != null;
+    if (!loggedIn && !isGuestMode) {
+      await _box.put('isLoggedIn', false);
+    }
 
     state = AuthState(
       isOnboarded: onboarded,
       isLoggedIn: loggedIn,
       isGuest: isGuestMode,
       userId: currentUser?.uid,
-      userName: currentUser?.displayName ?? cachedName,
+      userName: currentUser?.displayName ?? (cachedName.isNotEmpty ? cachedName : 'User'),
       userEmail: currentUser?.email ?? cachedEmail,
       userPhotoUrl: currentUser?.photoURL ?? cachedPhoto,
     );
@@ -117,12 +123,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
           isLoading: false,
           clearError: true,
         );
+        UserSyncService.instance.syncCurrentUser();
       } else {
-        final wasGuest = _box.get('isGuestLogin', defaultValue: false) as bool;
-        final wasLoggedIn = _box.get('isLoggedIn', defaultValue: false) as bool;
+        final isGuest = _box.get('isGuestLogin', defaultValue: false) as bool;
 
-        // Only clear login if currentUser is also confirmed null and not in guest mode
-        if (!wasGuest && !wasLoggedIn && _firebaseAuth.currentUser == null) {
+        // When Firebase session expires or user logs out (and not guest), clear loggedIn state
+        if (!isGuest) {
+          await _box.put('isLoggedIn', false);
           state = state.copyWith(
             isLoggedIn: false,
             isGuest: false,
@@ -331,6 +338,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
     );
   }
 
+  /// Update user display name across local Hive and Firebase
+  Future<void> updateDisplayName(String newName) async {
+    final name = newName.trim();
+    if (name.isEmpty) return;
+    try {
+      await _firebaseAuth.currentUser?.updateDisplayName(name);
+    } catch (_) {}
+    await _box.put('userName', name);
+    state = state.copyWith(userName: name);
+  }
+
   /// Logout from Firebase and local state
   Future<void> logout() async {
     try {
@@ -342,11 +360,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     await _box.put('isGuestLogin', false);
     await _box.put('isLoggedIn', false);
+    await _box.delete('userName');
+    await _box.delete('userEmail');
+    await _box.delete('userPhotoUrl');
+
+    // Wipe local schedule and profile caches so old account data doesn't leak
+    try {
+      final scheduleRepo = ScheduleRepository();
+      await scheduleRepo.init();
+      await scheduleRepo.clearAll();
+
+      final profileRepo = ProfileRepository();
+      await profileRepo.init();
+      await profileRepo.clearAll();
+
+      final notifService = NotificationService();
+      await notifService.cancelAllNotifications();
+    } catch (e) {
+      // Ignored
+    }
 
     state = state.copyWith(
       isLoggedIn: false,
       isGuest: false,
       userId: null,
+      userName: 'Guest User',
+      userEmail: '',
+      userPhotoUrl: null,
       isLoading: false,
       clearError: true,
     );

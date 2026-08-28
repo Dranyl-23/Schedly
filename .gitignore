@@ -1,3 +1,12 @@
+# AI & Large Model Weights
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.onnx
+ai_training/output_model/
+ai_training/dataset/
+
 # Miscellaneous
 *.class
 *.log
@@ -75,6 +84,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+admin_portal/node_modules/
+admin_portal/.next/
+admin_portal/.env.local
 
 # Symbolication related
 app.*.symbols

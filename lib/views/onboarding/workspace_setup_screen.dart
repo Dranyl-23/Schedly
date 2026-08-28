@@ -36,6 +36,21 @@ class _WorkspaceSetupScreenState extends ConsumerState<WorkspaceSetupScreen> {
 
   void _nextStep() {
     if (_isLoading) return;
+
+    if (_currentStep == 2) {
+      final setup = ref.read(userSetupProvider);
+      if (setup.organizationName.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select or add your institution / workplace.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+        return;
+      }
+    }
+
     if (_currentStep < 3) {
       setState(() => _currentStep++);
       _pageController.animateToPage(

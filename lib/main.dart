@@ -2,17 +2,25 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/config/remote_config_service.dart';
 import 'core/constants/app_theme.dart';
+import 'core/constants/app_version.dart';
+import 'core/database/institution_sync_service.dart';
 import 'core/database/profile_repository.dart';
 import 'core/database/schedule_repository.dart';
+import 'core/database/user_sync_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'firebase_options.dart';
 import 'providers/profile_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'views/onboarding/splash_screen.dart';
 
+@pragma('vm:entry-point')
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize App Version from pubspec / platform package info
+  await AppVersion.initialize();
 
   // 1. Load Environment Variables (.env)
   try {
@@ -21,10 +29,13 @@ void main() async {
     debugPrint('Could not load .env: $e');
   }
 
-  // 2. Initialize Firebase
+  // 2. Initialize Firebase, Cloud Directory & Remote Config Flags
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  InstitutionSyncService().startListening();
+  RemoteConfigService.instance.startListening();
+  UserSyncService.instance.syncCurrentUser();
 
   // 2. Initialize Local Databases (Schedules + Profiles)
   final repository = ScheduleRepository();

@@ -35,21 +35,21 @@ class MainNavigationShell extends ConsumerWidget {
         children: screens,
       ),
       bottomNavigationBar: Container(
-        height: 64 + bottomPadding,
-        padding: EdgeInsets.only(bottom: bottomPadding),
+        height: 68 + bottomPadding,
+        padding: EdgeInsets.only(bottom: bottomPadding, top: 4),
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           border: Border(
             top: BorderSide(
-              color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+              color: isDark ? AppColors.borderDark : const Color(0xFFF1F5F9),
               width: 1,
             ),
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              blurRadius: 12,
+              offset: const Offset(0, -3),
             ),
           ],
         ),
@@ -82,27 +82,27 @@ class MainNavigationShell extends ConsumerWidget {
             GestureDetector(
               onTap: () => _showAddModal(context),
               child: Container(
-                width: 48,
-                height: 48,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF2563EB), Color(0xFF7C3AED)],
+                    colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF2563EB).withValues(alpha: 0.35),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.38),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
                 child: const Icon(
                   Icons.add_rounded,
                   color: Colors.white,
-                  size: 28,
+                  size: 30,
                 ),
               ),
             ),
@@ -110,8 +110,8 @@ class MainNavigationShell extends ConsumerWidget {
             // Tab 2: Schedules (My Schedule Sets)
             _buildNavItem(
               context: context,
-              icon: Icons.view_agenda_outlined,
-              selectedIcon: Icons.view_agenda_rounded,
+              icon: Icons.layers_outlined,
+              selectedIcon: Icons.layers_rounded,
               label: 'Schedules',
               isSelected: currentIndex == 2,
               isDark: isDark,
@@ -144,29 +144,41 @@ class MainNavigationShell extends ConsumerWidget {
     required VoidCallback onTap,
   }) {
     final activeColor = const Color(0xFF2563EB);
-    final inactiveColor = isDark ? AppColors.textSecondaryDark : const Color(0xFF94A3B8);
+    final inactiveColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSelected ? selectedIcon : icon,
-              size: 22,
-              color: isSelected ? activeColor : inactiveColor,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF2563EB).withValues(alpha: isDark ? 0.2 : 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                isSelected ? selectedIcon : icon,
+                size: 22,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 color: isSelected ? activeColor : inactiveColor,
+                letterSpacing: -0.1,
               ),
             ),
           ],

@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../core/widgets/google_logo.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isEmailMode = false;
   bool _isSignUpMode = false;
   bool _obscurePassword = true;
+  bool _isForgotLoading = false;
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
@@ -159,14 +161,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
         try {
           await ref
-              .read(firestoreSyncServiceProvider)
-              .pullAndSyncAll()
-              .timeout(const Duration(seconds: 3));
-        } catch (e) {
-          debugPrint('pullAndSyncAll error: $e');
-        }
-        try {
-          ref.read(scheduleListProvider.notifier).refreshFromCloud();
+              .read(scheduleListProvider.notifier)
+              .refreshFromCloud()
+              .timeout(const Duration(seconds: 4));
+          ref.read(profileListProvider.notifier).refreshFromLocal();
         } catch (e) {
           debugPrint('refreshFromCloud error: $e');
         }
@@ -214,14 +212,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
         try {
           await ref
-              .read(firestoreSyncServiceProvider)
-              .pullAndSyncAll()
-              .timeout(const Duration(seconds: 3));
-        } catch (e) {
-          debugPrint('pullAndSyncAll error: $e');
-        }
-        try {
-          ref.read(scheduleListProvider.notifier).refreshFromCloud();
+              .read(scheduleListProvider.notifier)
+              .refreshFromCloud()
+              .timeout(const Duration(seconds: 4));
+          ref.read(profileListProvider.notifier).refreshFromLocal();
         } catch (e) {
           debugPrint('refreshFromCloud error: $e');
         }
@@ -237,16 +231,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      _showError('Please enter your email address first.');
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (email.isEmpty || !emailRegex.hasMatch(email)) {
+      _showError('Please enter a valid email address first.');
       return;
     }
 
+    setState(() => _isForgotLoading = true);
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      _showSuccess('Password reset link sent to $email');
-    } catch (e) {
-      _showError('Failed to send password reset email.');
+      if (mounted) {
+        _showSuccess(
+          'If an account exists for $email, a reset link has been sent. Check your inbox.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        _showError('Could not send reset email. Please check your connection and try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _isForgotLoading = false);
     }
   }
 
@@ -716,7 +720,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           if (value == null || value.trim().isEmpty) {
                             return 'Please enter your email';
                           }
-                          if (!value.contains('@') || !value.contains('.')) {
+                          final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                          if (!emailRegex.hasMatch(value.trim())) {
                             return 'Please enter a valid email address';
                           }
                           return null;
@@ -764,17 +769,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       if (!_isSignUpMode) ...[
                         Align(
                           alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _handleForgotPassword,
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
-                          ),
+                          child: _isForgotLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              : TextButton(
+                                  onPressed: _handleForgotPassword,
+                                  child: const Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                ),
                         ),
                       ] else ...[
                         const SizedBox(height: 14),

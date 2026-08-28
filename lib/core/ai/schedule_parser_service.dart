@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import '../../models/schedule_category.dart';
 import '../../models/schedule_entry.dart';
 import '../config/app_config.dart';
+import '../utils/time_utils.dart';
+import 'offline_schedule_parser.dart';
 
 class ScheduleParserService {
   static const String _defaultPrompt = '''
@@ -44,20 +47,295 @@ Critical Extraction Rules:
 5. Output ONLY the raw JSON array. Do not include markdown codeblocks (no ```json).
 ''';
 
-  /// Parses schedule from image/PDF bytes using Gemini Multimodal AI
+  /// Hybrid Multi-AI Cascade:
+  /// Preferred Offline -> Groq LPU -> Google Gemini -> OpenRouter Free Hub -> Cloudflare Workers AI -> Fallback On-Device Offline
   Future<List<ScheduleEntry>> parseImage({
     required Uint8List imageBytes,
     required String mimeType,
-    String? apiKey,
+    String? geminiApiKey,
+    String? groqApiKey,
+    String? openRouterApiKey,
+    String? cloudflareAccountId,
+    String? cloudflareApiToken,
+    String preferredEngine = 'auto', // 'auto', 'offline', 'groq', 'gemini', 'openrouter', 'cloudflare'
   }) async {
-    final effectiveKey = (apiKey != null && apiKey.trim().isNotEmpty)
-        ? apiKey.trim()
-        : AppConfig.defaultGeminiApiKey;
-
-    if (effectiveKey.isEmpty) {
-      throw Exception('Gemini API key is missing. Please configure GEMINI_API_KEY in your .env or Settings.');
+    // 0. Explicit Offline Mode: On-Device ML Kit + Grammar Engine
+    if (preferredEngine == 'offline') {
+      debugPrint('ScheduleParserService: [Tier 0] Parsing via On-Device Local Offline Engine...');
+      return await OfflineScheduleParser.parseFromBytes(imageBytes);
     }
 
+    final effectiveGeminiKey = (geminiApiKey != null && geminiApiKey.trim().isNotEmpty)
+        ? geminiApiKey.trim()
+        : AppConfig.defaultGeminiApiKey;
+
+    final effectiveGroqKey = (groqApiKey != null && groqApiKey.trim().isNotEmpty)
+        ? groqApiKey.trim()
+        : AppConfig.defaultGroqApiKey;
+
+    final effectiveOpenRouterKey = (openRouterApiKey != null && openRouterApiKey.trim().isNotEmpty)
+        ? openRouterApiKey.trim()
+        : AppConfig.defaultOpenRouterApiKey;
+
+    final effectiveCfAccountId = (cloudflareAccountId != null && cloudflareAccountId.trim().isNotEmpty)
+        ? cloudflareAccountId.trim()
+        : AppConfig.cloudflareAccountId;
+
+    final effectiveCfToken = (cloudflareApiToken != null && cloudflareApiToken.trim().isNotEmpty)
+        ? cloudflareApiToken.trim()
+        : AppConfig.cloudflareApiToken;
+
+    String? rawJson;
+    String lastError = '';
+
+    // 1. Primary Cloud Engine: Groq LPU (Sub-second speed)
+    if ((preferredEngine == 'groq' || preferredEngine == 'auto') && effectiveGroqKey.isNotEmpty) {
+      try {
+        debugPrint('ScheduleParserService: [Tier 1] Attempting Groq LPU (Llama 3.2 Vision)...');
+        rawJson = await _parseWithGroq(
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+          apiKey: effectiveGroqKey,
+        );
+      } catch (e) {
+        lastError = 'Groq error: $e';
+        debugPrint('ScheduleParserService: Tier 1 (Groq) failed: $e. Cascading to Tier 2 (Gemini)...');
+      }
+    }
+
+    // 2. Secondary Cloud Engine: Google Gemini Flash
+    if (rawJson == null && effectiveGeminiKey.isNotEmpty) {
+      try {
+        debugPrint('ScheduleParserService: [Tier 2] Attempting Google Gemini Multimodal AI...');
+        rawJson = await _parseWithGemini(
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+          apiKey: effectiveGeminiKey,
+        );
+      } catch (e) {
+        lastError = 'Gemini error: $e';
+        debugPrint('ScheduleParserService: Tier 2 (Gemini) failed: $e. Cascading to Tier 3 (OpenRouter)...');
+      }
+    }
+
+    // 3. Tertiary Cloud Engine: OpenRouter Free Hub (Multi-Model Hub)
+    if (rawJson == null && effectiveOpenRouterKey.isNotEmpty) {
+      try {
+        debugPrint('ScheduleParserService: [Tier 3] Attempting OpenRouter Free Vision Hub...');
+        rawJson = await _parseWithOpenRouter(
+          imageBytes: imageBytes,
+          mimeType: mimeType,
+          apiKey: effectiveOpenRouterKey,
+        );
+      } catch (e) {
+        lastError = 'OpenRouter error: $e';
+        debugPrint('ScheduleParserService: Tier 3 (OpenRouter) failed: $e. Cascading to Tier 4 (Cloudflare)...');
+      }
+    }
+
+    // 4. Quaternary Cloud Engine: Cloudflare Workers AI Edge
+    if (rawJson == null && effectiveCfAccountId.isNotEmpty && effectiveCfToken.isNotEmpty) {
+      try {
+        debugPrint('ScheduleParserService: [Tier 4] Attempting Cloudflare Workers AI Edge...');
+        rawJson = await _parseWithCloudflare(
+          imageBytes: imageBytes,
+          accountId: effectiveCfAccountId,
+          apiToken: effectiveCfToken,
+        );
+      } catch (e) {
+        lastError = 'Cloudflare error: $e';
+        debugPrint('ScheduleParserService: Tier 4 (Cloudflare) failed: $e. Cascading to On-Device Offline Engine...');
+      }
+    }
+
+    // 5. Automatic Fallback: If cloud tiers fail or device is offline, run on-device engine
+    if (rawJson == null || rawJson.trim().isEmpty) {
+      debugPrint('ScheduleParserService: Cloud tiers unavailable ($lastError). Cascading to Tier 0 (On-Device Offline Engine)...');
+      try {
+        final offlineEntries = await OfflineScheduleParser.parseFromBytes(imageBytes);
+        if (offlineEntries.isNotEmpty) {
+          debugPrint('ScheduleParserService: Successfully extracted ${offlineEntries.length} schedules via On-Device Offline Engine!');
+          return offlineEntries;
+        }
+      } catch (offlineErr) {
+        throw Exception('Offline on-device scanning and Cloud AI both failed. Cloud: $lastError | Offline: $offlineErr');
+      }
+      throw Exception('Multi-AI extraction could not process this image. Details: $lastError');
+    }
+
+    return _decodeScheduleJson(rawJson);
+  }
+
+  /// Extracts schedule using Groq LPU Vision (Llama-3.2-11b-vision-preview / 90b)
+  Future<String> _parseWithGroq({
+    required Uint8List imageBytes,
+    required String mimeType,
+    required String apiKey,
+  }) async {
+    final base64Image = base64Encode(imageBytes);
+    final normalizedMime = mimeType.contains('png') ? 'image/png' : 'image/jpeg';
+    final dataUri = 'data:$normalizedMime;base64,$base64Image';
+
+    final models = [
+      'llama-3.2-11b-vision-preview',
+      'llama-3.2-90b-vision-preview',
+    ];
+
+    for (final model in models) {
+      try {
+        final response = await http.post(
+          Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {
+                'role': 'user',
+                'content': [
+                  {'type': 'text', 'text': _defaultPrompt},
+                  {
+                    'type': 'image_url',
+                    'image_url': {'url': dataUri},
+                  },
+                ],
+              }
+            ],
+            'temperature': 0.1,
+            'max_tokens': 4096,
+          }),
+        ).timeout(const Duration(seconds: 35));
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body);
+          final choices = body['choices'] as List?;
+          if (choices != null && choices.isNotEmpty) {
+            final content = choices[0]['message']?['content']?.toString();
+            if (content != null && content.trim().isNotEmpty) {
+              debugPrint('ScheduleParserService: Successfully extracted via Groq ($model)');
+              return content;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('ScheduleParserService: Groq $model error: $e');
+      }
+    }
+
+    throw Exception('Groq Vision models returned no valid schedule output.');
+  }
+
+  /// Extracts schedule using OpenRouter Free Vision Hub
+  Future<String> _parseWithOpenRouter({
+    required Uint8List imageBytes,
+    required String mimeType,
+    required String apiKey,
+  }) async {
+    final base64Image = base64Encode(imageBytes);
+    final normalizedMime = mimeType.contains('png') ? 'image/png' : 'image/jpeg';
+    final dataUri = 'data:$normalizedMime;base64,$base64Image';
+
+    final freeVisionModels = [
+      'meta-llama/llama-3.2-11b-vision-instruct:free',
+      'meta-llama/llama-3.2-90b-vision-instruct:free',
+      'qwen/qwen-2-vl-72b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+    ];
+
+    for (final model in freeVisionModels) {
+      try {
+        final response = await http.post(
+          Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'HTTP-Referer': 'https://github.com/Dranyl-23/Schedly',
+            'X-Title': 'Reminda AI Schedule Scanner',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {
+                'role': 'user',
+                'content': [
+                  {'type': 'text', 'text': _defaultPrompt},
+                  {
+                    'type': 'image_url',
+                    'image_url': {'url': dataUri},
+                  },
+                ],
+              }
+            ],
+            'temperature': 0.1,
+            'max_tokens': 4096,
+          }),
+        ).timeout(const Duration(seconds: 35));
+
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body);
+          final choices = body['choices'] as List?;
+          if (choices != null && choices.isNotEmpty) {
+            final content = choices[0]['message']?['content']?.toString();
+            if (content != null && content.trim().isNotEmpty) {
+              debugPrint('ScheduleParserService: Successfully extracted via OpenRouter ($model)');
+              return content;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('ScheduleParserService: OpenRouter $model error: $e');
+      }
+    }
+
+    throw Exception('OpenRouter Free Vision models returned no valid schedule output.');
+  }
+
+  /// Extracts schedule using Cloudflare Workers AI Edge
+  Future<String> _parseWithCloudflare({
+    required Uint8List imageBytes,
+    required String accountId,
+    required String apiToken,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.cloudflare.com/client/v4/accounts/$accountId/ai/run/@cf/meta/llama-3.2-11b-vision-instruct'),
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'prompt': _defaultPrompt,
+          'image': imageBytes.toList(),
+          'max_tokens': 4096,
+        }),
+      ).timeout(const Duration(seconds: 40));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        final result = body['result'];
+        if (result != null && result['response'] != null) {
+          final content = result['response'].toString();
+          if (content.trim().isNotEmpty) {
+            debugPrint('ScheduleParserService: Successfully extracted via Cloudflare Workers AI Edge');
+            return content;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('ScheduleParserService: Cloudflare error: $e');
+    }
+
+    throw Exception('Cloudflare Workers AI returned no valid schedule output.');
+  }
+
+  /// Extracts schedule using Google Gemini Generative AI
+  Future<String> _parseWithGemini({
+    required Uint8List imageBytes,
+    required String mimeType,
+    required String apiKey,
+  }) async {
     final String normalizedMime;
     if (mimeType.contains('pdf') || mimeType.endsWith('.pdf')) {
       normalizedMime = 'application/pdf';
@@ -71,21 +349,19 @@ Critical Extraction Rules:
       normalizedMime = 'image/jpeg';
     }
 
-    // List of verified active models for this API Key
     final modelNames = [
+      'gemini-1.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash-8b',
       'gemini-flash-latest',
       'gemini-flash-lite-latest',
-      'gemini-3.5-flash',
-      'gemini-3.6-flash',
     ];
-    String? rawResponseText;
-    String lastErrorMessage = '';
 
     for (final modelName in modelNames) {
       try {
         final model = GenerativeModel(
           model: modelName,
-          apiKey: effectiveKey,
+          apiKey: apiKey,
           generationConfig: GenerationConfig(
             responseMimeType: 'application/json',
             temperature: 0.1,
@@ -101,31 +377,24 @@ Critical Extraction Rules:
 
         final response = await model
             .generateContent(content)
-            .timeout(const Duration(seconds: 45));
+            .timeout(const Duration(seconds: 40));
 
         if (response.text != null && response.text!.trim().isNotEmpty) {
-          rawResponseText = response.text;
-          debugPrint('ScheduleParserService: Successfully extracted via $modelName');
-          break;
+          debugPrint('ScheduleParserService: Successfully extracted via Gemini ($modelName)');
+          return response.text!;
         }
       } catch (e) {
-        lastErrorMessage = e.toString();
-        debugPrint('ScheduleParserService: Model $modelName failed: $e. Trying next candidate...');
+        debugPrint('ScheduleParserService: Gemini $modelName failed: $e');
       }
     }
 
-    if (rawResponseText == null || rawResponseText.trim().isEmpty) {
-      if (lastErrorMessage.toLowerCase().contains('quota') ||
-          lastErrorMessage.toLowerCase().contains('rate') ||
-          lastErrorMessage.contains('429')) {
-        throw Exception('Google Gemini free tier rate limit reached (15 scans/min). Please wait ~30 seconds and scan again.');
-      }
-      throw Exception('Failed to process image with Gemini AI: ${lastErrorMessage.isNotEmpty ? lastErrorMessage : "No response from AI."}');
-    }
+    throw Exception('Gemini Vision models returned no valid schedule output.');
+  }
 
+  /// Cleans and decodes JSON array into strongly-typed ScheduleEntry list
+  List<ScheduleEntry> _decodeScheduleJson(String rawText) {
     try {
-      // Clean response of any accidental markdown backticks
-      String cleanedJson = rawResponseText.trim();
+      String cleanedJson = rawText.trim();
       if (cleanedJson.startsWith('```json')) {
         cleanedJson = cleanedJson.replaceFirst('```json', '');
       }
@@ -135,7 +404,16 @@ Critical Extraction Rules:
       if (cleanedJson.endsWith('```')) {
         cleanedJson = cleanedJson.substring(0, cleanedJson.length - 3);
       }
-      cleanedJson = cleanedJson.trim();
+      // Find first [ and last ] to isolate JSON array from any conversational text
+      final firstBracket = cleanedJson.indexOf('[');
+      final lastBracket = cleanedJson.lastIndexOf(']');
+      if (firstBracket != -1 && lastBracket != -1 && lastBracket > firstBracket) {
+        cleanedJson = cleanedJson.substring(firstBracket, lastBracket + 1);
+      }
+
+      // Remove trailing commas before closing brackets which cause jsonDecode failure
+      cleanedJson = cleanedJson.replaceAll(RegExp(r',\s*\]'), ']');
+      cleanedJson = cleanedJson.replaceAll(RegExp(r',\s*\}'), '}');
 
       final dynamic decoded = jsonDecode(cleanedJson);
       if (decoded is! List) {
@@ -145,7 +423,8 @@ Critical Extraction Rules:
       final List<ScheduleEntry> parsedEntries = [];
       for (final item in decoded) {
         if (item is Map<String, dynamic>) {
-          final title = item['title']?.toString() ?? 'Untitled Schedule';
+          final rawTitle = item['title']?.toString().trim() ?? '';
+          final title = rawTitle.isNotEmpty ? rawTitle : 'Untitled Schedule';
           final categoryStr = item['category']?.toString();
           final category = ScheduleCategoryExtension.fromString(categoryStr);
 
@@ -154,30 +433,37 @@ Critical Extraction Rules:
             for (final d in item['daysOfWeek']) {
               if (d is num) {
                 final intDay = d.toInt();
-                if (intDay >= 1 && intDay <= 7) {
+                if (intDay >= 1 && intDay <= 7 && !days.contains(intDay)) {
                   days.add(intDay);
                 }
               }
             }
           }
           if (days.isEmpty) days.add(DateTime.now().weekday);
+          days.sort();
 
           final rawStart = item['startTime']?.toString() ?? '08:00';
           final rawEnd = item['endTime']?.toString() ?? '09:30';
-          final spansNextDay = item['spansNextDay'] as bool? ?? false;
-          final location = item['location']?.toString();
-          final notes = item['notes']?.toString();
+          final normalizedStart = _normalizeTime(rawStart, '08:00');
+          final normalizedEnd = _normalizeTime(rawEnd, '09:30');
+
+          final rawSpans = item['spansNextDay'] as bool?;
+          final spansNextDay = rawSpans ??
+              TimeUtils.checkSpansOvernight(normalizedStart, normalizedEnd);
+
+          final location = item['location']?.toString().trim();
+          final notes = item['notes']?.toString().trim();
 
           parsedEntries.add(
             ScheduleEntry(
               title: title,
               category: category,
               daysOfWeek: days,
-              startTime: rawStart,
-              endTime: rawEnd,
+              startTime: normalizedStart,
+              endTime: normalizedEnd,
               spansNextDay: spansNextDay,
-              location: location,
-              notes: notes,
+              location: (location != null && location.isNotEmpty) ? location : null,
+              notes: (notes != null && notes.isNotEmpty) ? notes : null,
               reminders: [15],
               isActive: true,
             ),
@@ -186,13 +472,47 @@ Critical Extraction Rules:
       }
 
       if (parsedEntries.isEmpty) {
-        throw Exception('No schedules could be extracted from this image. Please ensure the timetable is clearly visible.');
+        throw Exception('No schedules found in the scanned image. Please check the image quality.');
       }
 
       return parsedEntries;
     } catch (e) {
       if (e is Exception) rethrow;
-      throw Exception('Failed to decode extracted schedules: $e');
+      throw Exception('Failed to decode schedule output: $e');
+    }
+  }
+
+  /// Normalizes any AM/PM or 24h string into standard 24-hour HH:mm
+  static String _normalizeTime(String raw, String fallback) {
+    try {
+      String clean = raw.trim().toUpperCase();
+      if (clean.isEmpty) return fallback;
+
+      // Handle 12-hour AM/PM formats e.g. "8:00 AM", "01:30 PM", "7PM", "8:30PM"
+      final amPmMatch = RegExp(r'^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$').firstMatch(clean);
+      if (amPmMatch != null) {
+        int hour = int.parse(amPmMatch.group(1)!);
+        int minute = int.parse(amPmMatch.group(2) ?? '0');
+        final period = amPmMatch.group(3)!;
+
+        if (period == 'PM' && hour < 12) hour += 12;
+        if (period == 'AM' && hour == 12) hour = 0;
+
+        return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      }
+
+      // Handle standard 24h formats e.g. "8:00", "08:30", "17:00"
+      final parts = clean.split(':');
+      if (parts.length == 2) {
+        int hour = int.parse(parts[0].replaceAll(RegExp(r'\D'), ''));
+        int minute = int.parse(parts[1].replaceAll(RegExp(r'\D'), ''));
+        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+          return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+        }
+      }
+      return fallback;
+    } catch (_) {
+      return fallback;
     }
   }
 }

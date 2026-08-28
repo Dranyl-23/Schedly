@@ -1,67 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_version.dart';
+import 'privacy_policy_view.dart';
+import 'terms_of_service_view.dart';
 
 class AboutSchedlyView extends StatelessWidget {
   const AboutSchedlyView({super.key});
-
-  void _showPolicyDialog(BuildContext context, String title, String content) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                content,
-                style: const TextStyle(fontSize: 13.5, height: 1.45, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: const Text('Close'),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -301,22 +245,28 @@ class AboutSchedlyView extends StatelessWidget {
                       icon: Icons.privacy_tip_outlined,
                       title: 'Privacy Policy',
                       isDark: isDark,
-                      onTap: () => _showPolicyDialog(
-                        context,
-                        'Privacy Policy',
-                        'Reminda respects your privacy. All your schedule OCR extractions and timetable data are stored securely on your local device and synchronized directly with your private Firebase Firestore cloud database. We do not sell or distribute your personal data.',
-                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyView(),
+                          ),
+                        );
+                      },
                     ),
                     _buildSubtleDivider(isDark),
                     _buildLegalTile(
                       icon: Icons.description_outlined,
                       title: 'Terms of Service',
                       isDark: isDark,
-                      onTap: () => _showPolicyDialog(
-                        context,
-                        'Terms of Service',
-                        'Reminda is provided for personal scheduling and productivity management. By using Reminda, you agree to utilize the AI extraction and calendar features responsibly and in accordance with applicable service terms.',
-                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TermsOfServiceView(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

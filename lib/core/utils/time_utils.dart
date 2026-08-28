@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class TimeUtils {
@@ -26,6 +26,67 @@ class TimeUtils {
     return '';
   }
 
+  /// Returns 3-letter uppercase abbreviation (1 = MON, 7 = SUN)
+  static String getDayAbbr(int weekday) {
+    switch (weekday) {
+      case 1:
+        return 'MON';
+      case 2:
+        return 'TUE';
+      case 3:
+        return 'WED';
+      case 4:
+        return 'THU';
+      case 5:
+        return 'FRI';
+      case 6:
+        return 'SAT';
+      case 7:
+        return 'SUN';
+      default:
+        return 'DAY';
+    }
+  }
+
+  /// Formats multiple days into a standard abbreviation (e.g. "TTH", "MWF", "M-F", "MON")
+  static String formatDaysAbbr(List<int> days) {
+    if (days.isEmpty) return 'DAY';
+    final sorted = List<int>.from(days)..sort();
+    if (sorted.length == 7) return 'DAILY';
+    if (sorted.length == 5 && sorted.join(',') == '1,2,3,4,5') return 'M-F';
+    if (sorted.length == 3 && sorted.join(',') == '1,3,5') return 'MWF';
+    if (sorted.length == 2 && sorted.join(',') == '2,4') return 'TTH';
+    if (sorted.length == 2 && sorted.join(',') == '1,4') return 'M-TH';
+    if (sorted.length == 2 && sorted.join(',') == '2,5') return 'T-F';
+    if (sorted.length == 2 && sorted.join(',') == '3,6') return 'W-S';
+    if (sorted.length == 2 && sorted.join(',') == '5,6') return 'F-S';
+    if (sorted.length == 2 && sorted.join(',') == '6,7') return 'S-S';
+    if (sorted.length == 1) return getDayAbbr(sorted.first);
+    return sorted.map((d) => getDayAbbr(d)).join('/');
+  }
+
+  /// Returns standard color palette for a given weekday
+  static Color getDayColor(int weekday) {
+    switch (weekday) {
+      case 1:
+        return const Color(0xFF10B981); // MON - Green
+      case 2:
+        return const Color(0xFF2563EB); // TUE - Blue
+      case 3:
+        return const Color(0xFFF59E0B); // WED - Amber
+      case 4:
+        return const Color(0xFFF43F5E); // THU - Rose
+      case 5:
+        return const Color(0xFF06B6D4); // FRI - Cyan
+      case 6:
+        return const Color(0xFF8B5CF6); // SAT - Purple
+      case 7:
+        return const Color(0xFF6366F1); // SUN - Indigo
+      default:
+        return const Color(0xFF2563EB);
+    }
+  }
+
   /// Formats HH:mm string (24h) to 12h display e.g. "8:30 AM" or "10:00 PM"
   static String formatTo12Hour(String time24) {
     try {
@@ -33,7 +94,8 @@ class TimeUtils {
       if (parts.length != 2) return time24;
       final hour = int.parse(parts[0]);
       final minute = int.parse(parts[1]);
-      final dt = DateTime(2026, 1, 1, hour, minute);
+      final now = DateTime.now();
+      final dt = DateTime(now.year, now.month, now.day, hour, minute);
       return DateFormat('h:mm a').format(dt);
     } catch (_) {
       return time24;

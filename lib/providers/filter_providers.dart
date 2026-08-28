@@ -122,6 +122,91 @@ final activeOrUpcomingScheduleProvider = Provider<ScheduleLiveStatus?>((ref) {
   return null;
 });
 
+/// Model representing the very next upcoming schedule across any day of the week
+class NextUpcomingScheduleResult {
+  final ScheduleEntry entry;
+  final DateTime targetDateTime;
+  final int daysDifference; // 0 for today, 1 for tomorrow, etc.
+  final bool isToday;
+
+  const NextUpcomingScheduleResult({
+    required this.entry,
+    required this.targetDateTime,
+    required this.daysDifference,
+    required this.isToday,
+  });
+}
+
+/// Computes the exact next upcoming schedule across all coming days (today, tomorrow, next week)
+final nextUpcomingAcrossAllDaysProvider = Provider<NextUpcomingScheduleResult?>((ref) {
+  final allSchedules = ref.watch(scheduleListProvider);
+  if (allSchedules.isEmpty) return null;
+
+  final now = DateTime.now();
+  final currentWeekday = now.weekday;
+  final currentMinutes = now.hour * 60 + now.minute;
+
+  // 1. Check for upcoming class TODAY (start > now)
+  final todayEntries = allSchedules
+      .where((e) => e.isActive && e.daysOfWeek.contains(currentWeekday))
+      .toList()
+    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+  for (final entry in todayEntries) {
+    final startParts = entry.startTime.split(':');
+    if (startParts.length == 2) {
+      final startHour = int.parse(startParts[0]);
+      final startMin = int.parse(startParts[1]);
+      final totalStartMinutes = startHour * 60 + startMin;
+
+      if (totalStartMinutes > currentMinutes) {
+        final targetDate = DateTime(now.year, now.month, now.day, startHour, startMin);
+        return NextUpcomingScheduleResult(
+          entry: entry,
+          targetDateTime: targetDate,
+          daysDifference: 0,
+          isToday: true,
+        );
+      }
+    }
+  }
+
+  // 2. Search ahead for the next 7 days (i = 1..7)
+  for (int i = 1; i <= 7; i++) {
+    final candidateDate = now.add(Duration(days: i));
+    final candidateWeekday = candidateDate.weekday;
+
+    final candidateEntries = allSchedules
+        .where((e) => e.isActive && e.daysOfWeek.contains(candidateWeekday))
+        .toList()
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    if (candidateEntries.isNotEmpty) {
+      final nextEntry = candidateEntries.first;
+      final startParts = nextEntry.startTime.split(':');
+      final startHour = startParts.length == 2 ? int.parse(startParts[0]) : 8;
+      final startMin = startParts.length == 2 ? int.parse(startParts[1]) : 0;
+
+      final targetDate = DateTime(
+        candidateDate.year,
+        candidateDate.month,
+        candidateDate.day,
+        startHour,
+        startMin,
+      );
+
+      return NextUpcomingScheduleResult(
+        entry: nextEntry,
+        targetDateTime: targetDate,
+        daysDifference: i,
+        isToday: false,
+      );
+    }
+  }
+
+  return null;
+});
+
 /// Legacy Next upcoming schedule item for today
 final upcomingTodayScheduleProvider = Provider<ScheduleEntry?>((ref) {
   final status = ref.watch(activeOrUpcomingScheduleProvider);

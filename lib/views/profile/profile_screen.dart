@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../providers/schedule_provider.dart';
+import '../../providers/user_setup_provider.dart';
 import '../onboarding/login_screen.dart';
 import '../profiles/schedule_profiles_view.dart';
 import '../schedule/manage_all_schedules_view.dart';
 import 'about_schedly_view.dart';
 import 'help_support_view.dart';
+import 'send_feedback_view.dart';
 import 'settings_screen.dart';
+import 'user_profile_detail_view.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -53,6 +57,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (confirmed == true) {
       await ref.read(authProvider.notifier).logout();
+      await ref.read(userSetupProvider.notifier).reset();
+      ref.read(scheduleListProvider.notifier).clearLocalMemory();
+      ref.read(profileListProvider.notifier).clearLocalMemory();
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
@@ -115,56 +122,71 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           children: [
-            // User Profile Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceDark : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            // User Profile Card (Clickable to open detailed profile view)
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UserProfileDetailView()),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                    width: 1,
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // User Avatar: Google Profile Photo if available, else Initials
-                  _buildUserAvatar(auth, isDark),
-
-                  const SizedBox(width: 14),
-
-                  // Name & Email
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.userName,
-                          style: TextStyle(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          auth.isGuest ? 'guest@reminda.app' : auth.userEmail,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    // User Avatar: Google Profile Photo if available, else Initials
+                    _buildUserAvatar(auth, isDark),
+
+                    const SizedBox(width: 14),
+
+                    // Name & Email
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            auth.userName,
+                            style: TextStyle(
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            auth.isGuest ? 'guest@reminda.app' : auth.userEmail,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                      size: 24,
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -255,7 +277,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   _buildNavTile(
                     icon: Icons.help_outline_rounded,
                     title: 'Help & Support',
-                    subtitle: 'FAQs and contact support',
+                    subtitle: 'FAQs and device troubleshooting',
                     isDark: isDark,
                     onTap: () {
                       Navigator.push(
@@ -266,7 +288,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   _buildSubtleDivider(isDark),
 
-                  // Item 6: About
+                  // Item 6: Send Feedback
+                  _buildNavTile(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: 'Send Feedback',
+                    subtitle: 'Report a bug or suggest features',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SendFeedbackView()),
+                      );
+                    },
+                  ),
+                  _buildSubtleDivider(isDark),
+
+                  // Item 7: About
                   _buildNavTile(
                     icon: Icons.info_outline_rounded,
                     title: 'About',

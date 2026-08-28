@@ -2,8 +2,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import '../../models/alarm_tone.dart';
 import '../../models/schedule_category.dart';
 import '../../models/schedule_entry.dart';
 import '../utils/time_utils.dart';
@@ -16,7 +18,7 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String channelId = 'schedule_scanner_alarms';
+  static const String baseChannelId = 'reminda_alarm_channel';
   static const String channelName = 'Reminda Alarms';
   static const String channelDescription =
       'High-priority Reminda alarms and reminders for classes, shifts, and duties';
@@ -67,22 +69,33 @@ class NotificationService {
       },
     );
 
-    // 5. Create Android Notification Channel with Alarm audio attributes
-    final androidChannel = AndroidNotificationChannel(
-      channelId,
-      channelName,
-      description: channelDescription,
-      importance: Importance.max,
-      playSound: true,
-      enableVibration: true,
-      showBadge: true,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
-    );
-
-    await _notificationsPlugin
+    // 5. Create Android Notification Channels for all custom alarm ringtones
+    final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(androidChannel);
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (androidImplementation != null) {
+      for (final tone in AlarmTone.presets) {
+        final channelId = 'reminda_alarm_${tone.id}';
+        final soundResource = tone.id == 'system_default'
+            ? null
+            : RawResourceAndroidNotificationSound(tone.id);
+
+        final channel = AndroidNotificationChannel(
+          channelId,
+          'Reminda Alarms (${tone.name})',
+          description: 'High-priority alarms with ${tone.name} ringtone',
+          importance: Importance.max,
+          playSound: true,
+          sound: soundResource,
+          enableVibration: true,
+          showBadge: true,
+          audioAttributesUsage: AudioAttributesUsage.alarm,
+        );
+
+        await androidImplementation.createNotificationChannel(channel);
+      }
+    }
   }
 
   Future<bool> requestPermissions() async {
@@ -114,8 +127,6 @@ class NotificationService {
   }
 
   /// Calculates a stable, deterministic integer ID for notification cancellation.
-  /// Uses FNV-1a 32-bit hash instead of Dart's hashCode, which is not guaranteed
-  /// to produce the same value across different process runs.
   int _generateNotificationId(String entryId, int dayOfWeek, int leadMinutes) {
     final key = '$entryId-$dayOfWeek-$leadMinutes';
     // FNV-1a 32-bit hash
@@ -124,7 +135,6 @@ class NotificationService {
       hash ^= codeUnit;
       hash = (hash * 0x01000193) & 0xFFFFFFFF;
     }
-    // Ensure positive and within signed 32-bit int range for Android
     return hash & 0x7FFFFFFF;
   }
 
@@ -137,6 +147,21 @@ class NotificationService {
 
     final startHour = int.parse(startParts[0]);
     final startMinute = int.parse(startParts[1]);
+
+    // Retrieve active alarm tone ID from settings or user setup
+    String toneId = 'crystal_chime';
+    try {
+      if (Hive.isBoxOpen('app_settings_box')) {
+        toneId = Hive.box('app_settings_box').get('default_alarm_tone_id', defaultValue: 'crystal_chime') as String;
+      } else if (Hive.isBoxOpen('user_setup_box')) {
+        toneId = Hive.box('user_setup_box').get('selectedToneId', defaultValue: 'crystal_chime') as String;
+      }
+    } catch (_) {}
+
+    final channelId = 'reminda_alarm_$toneId';
+    final soundResource = toneId == 'system_default'
+        ? null
+        : RawResourceAndroidNotificationSound(toneId);
 
     for (final dayOfWeek in entry.daysOfWeek) {
       for (final leadMinutes in entry.reminders) {
@@ -153,7 +178,7 @@ class NotificationService {
         }
         if (alarmHour < 0) {
           alarmHour += 24;
-          alarmDay = alarmDay == 1 ? 7 : alarmDay - 1; // Rolled back to previous day
+          alarmDay = alarmDay == 1 ? 7 : alarmDay - 1;
         }
 
         final tz.TZDateTime scheduledDate = _nextInstanceOfDayAndTime(
@@ -183,12 +208,13 @@ class NotificationService {
             NotificationDetails(
               android: AndroidNotificationDetails(
                 channelId,
-                channelName,
+                'Reminda Alarms',
                 channelDescription: channelDescription,
                 importance: Importance.max,
                 priority: Priority.max,
                 category: AndroidNotificationCategory.alarm,
                 audioAttributesUsage: AudioAttributesUsage.alarm,
+                sound: soundResource,
                 ticker: 'Schedule Reminder',
                 icon: '@mipmap/ic_launcher',
                 styleInformation: BigTextStyleInformation(body),
@@ -200,10 +226,11 @@ class NotificationService {
                 enableVibration: true,
                 playSound: true,
               ),
-              iOS: const DarwinNotificationDetails(
+              iOS: DarwinNotificationDetails(
                 presentAlert: true,
                 presentBadge: true,
                 presentSound: true,
+                sound: toneId == 'system_default' ? null : '$toneId.wav',
                 interruptionLevel: InterruptionLevel.timeSensitive,
               ),
             ),
@@ -240,42 +267,12 @@ class NotificationService {
     }
   }
 
-  /// Instant test notification
-  Future<void> showInstantNotification({
-    required String title,
-    required String body,
-  }) async {
-    await _notificationsPlugin.show(
-      DateTime.now().millisecond,
-      title,
-      body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelId,
-          channelName,
-          channelDescription: channelDescription,
-          importance: Importance.max,
-          priority: Priority.max,
-          category: AndroidNotificationCategory.alarm,
-          audioAttributesUsage: AudioAttributesUsage.alarm,
-          fullScreenIntent: true,
-          visibility: NotificationVisibility.public,
-          channelShowBadge: true,
-          playSound: true,
-          enableVibration: true,
-          enableLights: true,
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          interruptionLevel: InterruptionLevel.timeSensitive,
-        ),
-      ),
-    );
+  /// Cancel all scheduled alarms and notifications
+  Future<void> cancelAllNotifications() async {
+    await _notificationsPlugin.cancelAll();
   }
 
-  /// Finds the next occurrence of [dayOfWeek] (1=Mon..7=Sun) at [hour]:[minute]
+  /// Helper to calculate the next occurrence of a given day of week and time
   tz.TZDateTime _nextInstanceOfDayAndTime(int dayOfWeek, int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -287,14 +284,16 @@ class NotificationService {
       minute,
     );
 
-    // Adjust day of week
-    while (scheduledDate.weekday != dayOfWeek) {
+    while (scheduledDate.weekday != dayOfWeek || scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
-    }
-
-    // If time has already passed today, schedule for next week
-    if (scheduledDate.isBefore(now)) {
-      scheduledDate = scheduledDate.add(const Duration(days: 7));
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        scheduledDate.year,
+        scheduledDate.month,
+        scheduledDate.day,
+        hour,
+        minute,
+      );
     }
 
     return scheduledDate;

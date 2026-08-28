@@ -1,14 +1,16 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/schedule_entry.dart';
 import '../../models/schedule_profile.dart';
+import 'firestore_instance.dart';
 import 'profile_repository.dart';
 import 'schedule_repository.dart';
 
 class FirestoreSyncService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = appFirestore;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ScheduleRepository _scheduleRepo;
   final ProfileRepository _profileRepo;
@@ -39,7 +41,7 @@ class FirestoreSyncService {
     _auth.authStateChanges().listen((user) async {
       if (user != null) {
         debugPrint('FirestoreSyncService: User logged in (${user.uid}). Pulling cloud schedules & profiles...');
-        await pullAndSyncAll();
+        await pullAndSyncAll(onDataChanged: onDataChanged);
         _listenToCloudChanges(onDataChanged);
       } else {
         debugPrint('FirestoreSyncService: User logged out. Cancelling realtime subscriptions.');
@@ -49,7 +51,7 @@ class FirestoreSyncService {
   }
 
   /// Pull all cloud data and bidirectional merge with local Hive database
-  Future<void> pullAndSyncAll() async {
+  Future<void> pullAndSyncAll({VoidCallback? onDataChanged}) async {
     final uid = _currentUserId;
     if (uid == null) return;
 
@@ -64,60 +66,68 @@ class FirestoreSyncService {
         }, SetOptions(merge: true));
       }
 
-      // 1. Sync Schedules (Smart Two-Way Merge)
+      bool hasChanges = false;
+
+      // 1. Sync Schedules (Cloud is authoritative for this authenticated user)
       final schedRef = _userSchedulesRef;
       if (schedRef != null) {
         final snapshot = await schedRef.get().timeout(const Duration(seconds: 10));
-        final localSchedules = _scheduleRepo.getAllSchedules();
 
         final cloudEntries = <ScheduleEntry>[];
-        final cloudIds = <String>{};
-
         for (final doc in snapshot.docs) {
           try {
             final entry = ScheduleEntry.fromJson(doc.data());
             cloudEntries.add(entry);
-            cloudIds.add(entry.id);
           } catch (e) {
             debugPrint('Failed to parse cloud schedule doc ${doc.id}: $e');
           }
         }
 
-        // A. Merge cloud entries into local Hive
+        // Replace local cache with authenticated user's cloud schedules
+        await _scheduleRepo.clearAll();
         if (cloudEntries.isNotEmpty) {
           await _scheduleRepo.saveBatch(cloudEntries);
         }
-
-        // B. Upload any local entries that are missing in the cloud (e.g. from Guest or Offline mode)
-        final missingInCloud = localSchedules.where((e) => !cloudIds.contains(e.id)).toList();
-        if (missingInCloud.isNotEmpty) {
-          debugPrint('FirestoreSyncService: Uploading ${missingInCloud.length} offline/guest schedules to cloud...');
-          await syncBatchSchedulesToCloud(missingInCloud);
-        }
+        hasChanges = true;
       }
 
-      // 2. Sync Profiles (Smart Two-Way Merge)
+      // 2. Sync Profiles
       final profRef = _userProfilesRef;
       if (profRef != null) {
         final snapshot = await profRef.get().timeout(const Duration(seconds: 10));
-        final localProfiles = _profileRepo.getAllProfiles();
-        final cloudProfileIds = <String>{};
+        final cloudProfiles = <ScheduleProfile>[];
 
         for (final doc in snapshot.docs) {
           try {
             final profile = ScheduleProfile.fromJson(doc.data());
-            cloudProfileIds.add(profile.id);
-            await _profileRepo.saveProfile(profile);
+            cloudProfiles.add(profile);
           } catch (e) {
             debugPrint('Failed to parse cloud profile doc ${doc.id}: $e');
           }
         }
 
-        // Upload any local profiles missing in cloud
-        final missingProfiles = localProfiles.where((p) => !cloudProfileIds.contains(p.id)).toList();
-        for (final p in missingProfiles) {
-          await syncProfileToCloud(p);
+        if (cloudProfiles.isNotEmpty) {
+          await _profileRepo.clearAll();
+          for (final p in cloudProfiles) {
+            await _profileRepo.saveProfile(p);
+          }
+          hasChanges = true;
+        } else {
+          // Fresh profile setup
+          final localProfiles = _profileRepo.getAllProfiles();
+          if (localProfiles.isEmpty) {
+            await _profileRepo.resetDefaultProfiles();
+          }
+          final refreshed = _profileRepo.getAllProfiles();
+          for (final p in refreshed) {
+            await syncProfileToCloud(p);
+          }
+          hasChanges = true;
         }
+      }
+
+      if (hasChanges && onDataChanged != null) {
+        onDataChanged();
       }
     } catch (e) {
       debugPrint('FirestoreSyncService: Handled error/timeout during pullAndSyncAll: $e');
@@ -195,19 +205,23 @@ class FirestoreSyncService {
     }
   }
 
-  /// Upload a batch of schedules to Cloud Firestore atomically
+  /// Upload a batch of schedules to Cloud Firestore atomically (safely chunked under 500 ops)
   Future<void> syncBatchSchedulesToCloud(List<ScheduleEntry> entries) async {
     final ref = _userSchedulesRef;
     if (ref == null || entries.isEmpty) return;
 
+    const int batchLimit = 400; // Safe threshold well below Firestore's 500 ops cap
     try {
-      final batch = _firestore.batch();
-      for (final entry in entries) {
-        final docRef = ref.doc(entry.id);
-        batch.set(docRef, entry.toJson(), SetOptions(merge: true));
+      for (var i = 0; i < entries.length; i += batchLimit) {
+        final chunk = entries.sublist(i, min(i + batchLimit, entries.length));
+        final batch = _firestore.batch();
+        for (final entry in chunk) {
+          final docRef = ref.doc(entry.id);
+          batch.set(docRef, entry.toJson(), SetOptions(merge: true));
+        }
+        await batch.commit();
       }
-      await batch.commit();
-      debugPrint('FirestoreSyncService: Synced ${entries.length} schedules to cloud batch.');
+      debugPrint('FirestoreSyncService: Synced ${entries.length} schedules to cloud in batches.');
     } catch (e) {
       debugPrint('FirestoreSyncService: Failed batch upload: $e');
     }

@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
 import '../../../models/schedule_category.dart';
 import '../../../providers/filter_providers.dart';
+import '../../../providers/user_setup_provider.dart';
 import '../schedule_detail_view.dart';
 
 class UpcomingBanner extends ConsumerStatefulWidget {
@@ -164,6 +166,267 @@ class _UpcomingBannerState extends ConsumerState<UpcomingBanner> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (liveStatus == null) {
+      final nextUpcoming = ref.watch(nextUpcomingAcrossAllDaysProvider);
+
+      if (nextUpcoming != null) {
+        final entry = nextUpcoming.entry;
+        final targetDate = nextUpcoming.targetDateTime;
+        final diff = targetDate.difference(DateTime.now());
+
+        String countdownText;
+        if (diff.isNegative) {
+          countdownText = 'Starting now';
+        } else {
+          final days = diff.inDays;
+          final hours = diff.inHours % 24;
+          final minutes = diff.inMinutes % 60;
+          final seconds = diff.inSeconds % 60;
+
+          if (days > 0) {
+            countdownText = 'Starts in ${days}d ${hours}h';
+          } else if (hours > 0) {
+            countdownText = 'Starts in ${hours}h ${minutes}m ${seconds}s';
+          } else if (minutes > 0) {
+            countdownText = 'Starts in ${minutes}m ${seconds}s';
+          } else {
+            countdownText = 'Starts in ${seconds}s';
+          }
+        }
+
+        final subjectIcon = _getIconForSubject(entry.title, entry.category);
+        final dayLabel = nextUpcoming.isToday
+            ? 'Today'
+            : (nextUpcoming.daysDifference == 1
+                ? 'Tomorrow'
+                : DateFormat('EEE, MMM d').format(targetDate));
+
+        final userSetup = ref.watch(userSetupProvider);
+        String tagPrefix;
+        IconData tagIcon;
+
+        switch (userSetup.role.toLowerCase()) {
+          case 'duty':
+          case 'medic':
+          case 'nurs':
+            tagPrefix = 'Next Duty';
+            tagIcon = Icons.medical_services_rounded;
+            break;
+          case 'work':
+          case 'job':
+          case 'part':
+            tagPrefix = 'Next Shift';
+            tagIcon = Icons.work_rounded;
+            break;
+          case 'personal':
+          case 'custom':
+            tagPrefix = 'Next Routine';
+            tagIcon = Icons.schedule_rounded;
+            break;
+          default:
+            tagPrefix = 'Next Class';
+            tagIcon = Icons.school_rounded;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF1E3A8A), // Deep Navy
+                Color(0xFF2563EB), // Royal Blue
+                Color(0xFF3B82F6), // Vibrant Blue
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ScheduleDetailView(entry: entry)),
+                );
+              },
+              borderRadius: BorderRadius.circular(22),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Row: Category + Day Tag & Countdown (Overflow-guarded)
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  tagIcon,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    '$tagPrefix • $dayLabel',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.timer_outlined,
+                                size: 12.5,
+                                color: Color(0xFF93C5FD),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                countdownText,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // Subject Title & Icon
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(subjectIcon, color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${TimeUtils.formatTo12Hour(entry.startTime)} – ${TimeUtils.formatTo12Hour(entry.endTime)}',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    if ((entry.location != null && entry.location!.isNotEmpty) ||
+                        (entry.notes != null && entry.notes!.isNotEmpty)) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            if (entry.location != null && entry.location!.isNotEmpty) ...[
+                              const Icon(Icons.meeting_room_outlined, size: 14, color: Colors.white70),
+                              const SizedBox(width: 4),
+                              Text(
+                                entry.location!,
+                                style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            if (entry.notes != null && entry.notes!.isNotEmpty) ...[
+                              const Icon(Icons.notes_rounded, size: 14, color: Colors.white70),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  entry.notes!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         padding: const EdgeInsets.all(18),
@@ -285,30 +548,37 @@ class _UpcomingBannerState extends ConsumerState<UpcomingBanner> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        if (isOngoing) ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF34D399),
-                              shape: BoxShape.circle,
+                    Flexible(
+                      child: Row(
+                        children: [
+                          if (isOngoing) ...[
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF34D399),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              isOngoing ? 'HAPPENING NOW' : 'NEXT SCHEDULE',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 6),
                         ],
-                        Text(
-                          isOngoing ? 'HAPPENING NOW' : 'NEXT SCHEDULE',
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
@@ -54,8 +54,7 @@ class WeekOverviewBar extends ConsumerWidget {
                     color: isSelected
                         ? AppColors.primary
                         : (isToday
-                            // ignore: deprecated_member_use
-                            ? AppColors.primary.withOpacity(0.4)
+                            ? AppColors.primary.withValues(alpha: 0.4)
                             : (isDark ? AppColors.borderDark : AppColors.borderLight)),
                     width: isToday ? 1.5 : 1,
                   ),
@@ -70,8 +69,7 @@ class WeekOverviewBar extends ConsumerWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: isSelected
-                            // ignore: deprecated_member_use
-                            ? Colors.white.withOpacity(0.9)
+                            ? Colors.white.withValues(alpha: 0.9)
                             : (isDark
                                 ? AppColors.textSecondaryDark
                                 : AppColors.textSecondaryLight),

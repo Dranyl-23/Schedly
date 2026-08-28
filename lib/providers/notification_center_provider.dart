@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../core/utils/time_utils.dart';
 import '../models/app_notification.dart';
+import '../models/schedule_entry.dart';
 import 'schedule_provider.dart';
 
 class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
@@ -25,16 +26,30 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
     _generateDynamicNotifications(currentSchedules);
   }
 
+  static const String _cacheKey = 'cached_notifications_list';
+
   void _loadFromCache() {
     if (_box == null) return;
     final List<AppNotification> list = [];
-    for (var i = 0; i < _box!.length; i++) {
-      try {
-        final raw = _box!.getAt(i);
-        if (raw is Map) {
-          list.add(AppNotification.fromJson(Map<String, dynamic>.from(raw)));
-        }
-      } catch (_) {}
+    final rawList = _box!.get(_cacheKey);
+    if (rawList is List) {
+      for (final raw in rawList) {
+        try {
+          if (raw is Map) {
+            list.add(AppNotification.fromJson(Map<String, dynamic>.from(raw)));
+          }
+        } catch (_) {}
+      }
+    } else {
+      // Backward compatibility for legacy item-by-item format
+      for (var i = 0; i < _box!.length; i++) {
+        try {
+          final raw = _box!.getAt(i);
+          if (raw is Map) {
+            list.add(AppNotification.fromJson(Map<String, dynamic>.from(raw)));
+          }
+        } catch (_) {}
+      }
     }
     list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     state = list;
@@ -42,17 +57,15 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
 
   Future<void> _saveToCache() async {
     if (_box == null) return;
-    await _box!.clear();
-    for (final item in state) {
-      await _box!.add(item.toJson());
-    }
+    final jsonList = state.map((item) => item.toJson()).toList();
+    await _box!.put(_cacheKey, jsonList);
   }
 
-  void _generateDynamicNotifications(dynamic schedules) {
+  void _generateDynamicNotifications(List<ScheduleEntry> schedules) {
     final now = DateTime.now();
     final currentWeekday = now.weekday;
 
-    final todayEntries = (schedules as List)
+    final todayEntries = schedules
         .where((e) => e.isActive && e.daysOfWeek.contains(currentWeekday))
         .toList()
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
@@ -102,7 +115,12 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
       final endMin = int.tryParse(endParts.length > 1 ? endParts[1] : '0') ?? 0;
 
       final startDateTime = DateTime(now.year, now.month, now.day, startHour, startMin);
-      final endDateTime = DateTime(now.year, now.month, now.day, endHour, endMin);
+      final DateTime endDateTime;
+      if (entry.spansNextDay || (endHour * 60 + endMin) < (startHour * 60 + startMin)) {
+        endDateTime = DateTime(now.year, now.month, now.day, endHour, endMin).add(const Duration(days: 1));
+      } else {
+        endDateTime = DateTime(now.year, now.month, now.day, endHour, endMin);
+      }
 
       final String notifTitle;
       final String notifBody;

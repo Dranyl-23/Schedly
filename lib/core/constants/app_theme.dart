@@ -83,6 +83,11 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFF1F5F9),
+        thickness: 1,
+        space: 1,
+      ),
     );
   }
 
@@ -166,6 +171,11 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.borderDark,
+        thickness: 1,
+        space: 1,
       ),
     );
   }

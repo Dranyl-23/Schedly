@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/database/firestore_instance.dart';
 import '../models/schedule_profile.dart';
 import 'profile_provider.dart';
 import 'sound_settings_provider.dart';
@@ -140,19 +142,25 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
       await _box?.put('userOrgColor', state.organizationColorHex);
       await _box?.put('default_alarm_tone_id', state.selectedToneId);
       await _box?.put('defaultReminderLead', state.reminderLeadMinutes);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('UserSetupProvider: Failed to save setup to Hive cache: $e');
+    }
 
     state = state.copyWith(isSetupCompleted: true);
 
     try {
       await ref.read(soundSettingsProvider.notifier).selectTone(state.selectedToneId);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('UserSetupProvider: Failed to apply sound tone setting: $e');
+    }
 
     try {
-      final profileName = state.organizationShort.isNotEmpty
-          ? '${state.organizationShort} Schedule'
-          : state.organizationName.isNotEmpty
-              ? '${state.organizationName} Schedule'
+      final shortTrimmed = state.organizationShort.trim();
+      final nameTrimmed = state.organizationName.trim();
+      final profileName = shortTrimmed.isNotEmpty
+          ? '$shortTrimmed Schedule'
+          : nameTrimmed.isNotEmpty
+              ? '$nameTrimmed Schedule'
               : 'My Schedule';
 
       final initialProfile = ScheduleProfile(
@@ -164,12 +172,14 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
 
       await ref.read(profileListProvider.notifier).addProfile(initialProfile);
       await ref.read(profileListProvider.notifier).setActive(initialProfile.id);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('UserSetupProvider: Failed to create or activate initial profile: $e');
+    }
 
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        appFirestore.collection('users').doc(user.uid).set({
           'role': state.role,
           'countryCode': state.countryCode,
           'regionCode': state.regionCode,
@@ -183,13 +193,15 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
           'setupCompletedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true)).ignore(); // non-blocking background sync
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('UserSetupProvider: Failed to sync user setup to Firestore: $e');
+    }
   }
 
   /// Automatically check Firestore for existing user setup and restore it
   Future<bool> checkAndRestoreCloudSetup(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance
+      final doc = await appFirestore
           .collection('users')
           .doc(uid)
           .get()
@@ -241,6 +253,24 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
       // Ignored or offline
     }
     return false;
+  }
+
+  /// Reset local setup state on logout or account switch
+  Future<void> reset() async {
+    try {
+      _box = Hive.isBoxOpen(settingsBox)
+          ? Hive.box(settingsBox)
+          : await Hive.openBox(settingsBox);
+      await _box?.delete('isSetupCompleted');
+      await _box?.delete('userRole');
+      await _box?.delete('userCountry');
+      await _box?.delete('userRegionCode');
+      await _box?.delete('userCity');
+      await _box?.delete('userOrgName');
+      await _box?.delete('userOrgShort');
+      await _box?.delete('userOrgColor');
+    } catch (_) {}
+    state = const UserSetupState();
   }
 }
 

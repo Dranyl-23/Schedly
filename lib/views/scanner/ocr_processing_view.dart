@@ -3,9 +3,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/ai/schedule_parser_service.dart';
 import '../../models/schedule_entry.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/schedule_provider.dart';
 import 'review_scanned_schedules_view.dart';
 
@@ -71,13 +73,26 @@ class _OcrProcessingViewState extends ConsumerState<OcrProcessingView>
   }
 
   Future<void> _startParsing() async {
-    final apiKey = ref.read(geminiApiKeyProvider);
+    final authState = ref.read(authProvider);
+    final isGuest = authState.isGuest || !authState.isLoggedIn;
+
+    final geminiKey = ref.read(geminiApiKeyProvider);
+    final groqKey = ref.read(groqApiKeyProvider);
+    final openRouterKey = ref.read(openRouterApiKeyProvider);
+    final cfAccountId = ref.read(cloudflareAccountIdProvider);
+    final cfApiToken = ref.read(cloudflareApiTokenProvider);
+    final preferredEngine = isGuest ? 'offline' : ref.read(preferredAiEngineProvider);
 
     try {
       final List<ScheduleEntry> parsed = await _parserService.parseImage(
         imageBytes: widget.imageBytes,
         mimeType: widget.mimeType,
-        apiKey: apiKey.isNotEmpty ? apiKey : null,
+        geminiApiKey: geminiKey.isNotEmpty ? geminiKey : null,
+        groqApiKey: groqKey.isNotEmpty ? groqKey : null,
+        openRouterApiKey: openRouterKey.isNotEmpty ? openRouterKey : null,
+        cloudflareAccountId: cfAccountId.isNotEmpty ? cfAccountId : null,
+        cloudflareApiToken: cfApiToken.isNotEmpty ? cfApiToken : null,
+        preferredEngine: preferredEngine,
       );
 
       _stepTimer?.cancel();
@@ -102,20 +117,71 @@ class _OcrProcessingViewState extends ConsumerState<OcrProcessingView>
     } catch (e) {
       _stepTimer?.cancel();
       if (mounted) {
-        Navigator.pop(context);
+        final rawErr = e.toString().replaceAll('Exception: ', '');
+        final isNetworkErr = rawErr.toLowerCase().contains('socket') ||
+            rawErr.toLowerCase().contains('clientexception') ||
+            rawErr.toLowerCase().contains('failed host lookup') ||
+            rawErr.toLowerCase().contains('timeout') ||
+            rawErr.toLowerCase().contains('network');
+
+        final String dialogTitle = isNetworkErr ? 'No Internet Connection' : 'AI Scan Error';
+        final IconData dialogIcon = isNetworkErr ? Icons.wifi_off_rounded : Icons.error_outline_rounded;
+        final String errorBody = isNetworkErr
+            ? 'Schedly requires an active internet connection to process timetable images with Vision AI models. Please connect to Wi-Fi or Mobile Data and try again.'
+            : 'Could not extract timetable across available AI engines:\n\n$rawErr';
+
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: const Text('Schedule Scan Error', style: TextStyle(fontWeight: FontWeight.w800)),
+            title: Row(
+              children: [
+                Icon(dialogIcon, color: const Color(0xFFDC2626), size: 24),
+                const SizedBox(width: 8),
+                Text(dialogTitle, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              ],
+            ),
             content: Text(
-              'Could not extract timetable:\n${e.toString().replaceAll("Exception: ", "")}',
+              errorBody,
+              style: const TextStyle(fontSize: 13.5, height: 1.4),
             ),
             actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB)),
-                child: const Text('OK', style: TextStyle(color: Colors.white)),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.pop(context); // Return to scanner landing to pick another image
+                },
+                icon: const Icon(Icons.photo_library_outlined, size: 16, color: Color(0xFF2563EB)),
+                label: const Text('Try Different Image', style: TextStyle(color: Color(0xFF2563EB))),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF2563EB)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _currentStepIndex = 0;
+                  });
+                  _startStepSimulation();
+                  _startParsing();
+                },
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry Scan'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ],
           ),
@@ -162,10 +228,41 @@ class _OcrProcessingViewState extends ConsumerState<OcrProcessingView>
                 ),
               ),
               const SizedBox(height: 6),
+              Container(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width - 64,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.25)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 13, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        _getEngineLabel(ref.watch(preferredAiEngineProvider)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
               Text(
-                'This may take a few seconds.',
+                'Extracting subjects, days, times, and venues',
                 style: TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 13,
                   color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
                 ),
               ),
@@ -396,6 +493,29 @@ class _OcrProcessingViewState extends ConsumerState<OcrProcessingView>
         ],
       ),
     );
+  }
+
+  String _getEngineLabel(String engine) {
+    final authState = ref.read(authProvider);
+    if (authState.isGuest || !authState.isLoggedIn) {
+      return 'On-Device Local AI (Offline)';
+    }
+
+    switch (engine.toLowerCase()) {
+      case 'offline':
+        return 'On-Device Local AI (Offline)';
+      case 'groq':
+        return 'Groq LPU Vision';
+      case 'gemini':
+        return 'Google Gemini Flash';
+      case 'openrouter':
+        return 'OpenRouter Vision';
+      case 'cloudflare':
+        return 'Cloudflare Workers AI';
+      case 'auto':
+      default:
+        return 'Hybrid Multi-AI Cascade';
+    }
   }
 }
 

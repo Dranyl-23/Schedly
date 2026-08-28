@@ -12,6 +12,50 @@ class AppConfig {
     return '';
   }
 
+  /// Securely retrieves Groq AI API Key exclusively from .env file
+  static String get defaultGroqApiKey {
+    try {
+      final envKey = dotenv.env['GROQ_API_KEY'];
+      if (envKey != null && envKey.trim().isNotEmpty && !envKey.contains('your_groq_api_key')) {
+        return envKey.trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  /// Securely retrieves OpenRouter AI API Key exclusively from .env file
+  static String get defaultOpenRouterApiKey {
+    try {
+      final envKey = dotenv.env['OPENROUTER_API_KEY'];
+      if (envKey != null && envKey.trim().isNotEmpty && !envKey.contains('your_openrouter_api_key')) {
+        return envKey.trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  /// Securely retrieves Cloudflare Account ID exclusively from .env file
+  static String get cloudflareAccountId {
+    try {
+      final envVal = dotenv.env['CLOUDFLARE_ACCOUNT_ID'];
+      if (envVal != null && envVal.trim().isNotEmpty && !envVal.contains('your_')) {
+        return envVal.trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  /// Securely retrieves Cloudflare API Token exclusively from .env file
+  static String get cloudflareApiToken {
+    try {
+      final envVal = dotenv.env['CLOUDFLARE_API_TOKEN'];
+      if (envVal != null && envVal.trim().isNotEmpty && !envVal.contains('your_')) {
+        return envVal.trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
   /// Retrieves the Google OAuth server/web client ID exclusively from .env file.
   /// Used by GoogleSignIn to validate ID tokens server-side.
   static String get googleOAuthClientId {

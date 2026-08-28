@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../models/schedule_profile.dart';
 import '../../providers/profile_provider.dart';
+import '../../providers/schedule_provider.dart';
 import 'profile_schedule_timetable_view.dart';
 
 class ScheduleProfilesView extends ConsumerWidget {
@@ -402,14 +403,14 @@ class ScheduleProfilesView extends ConsumerWidget {
             const SizedBox(width: 10),
             const Expanded(
               child: Text(
-                'Delete Schedule?',
+                'Delete Profile & Schedules?',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to delete "${profile.name}"? This action cannot be undone.',
+          'Are you sure you want to delete "${profile.name}"? All schedules and reminders under this profile will be permanently wiped out.',
           style: const TextStyle(fontSize: 14),
         ),
         actions: [
@@ -431,17 +432,21 @@ class ScheduleProfilesView extends ConsumerWidget {
             ),
             onPressed: () async {
               Navigator.pop(ctx);
+              // Wipe out all schedule entries under this profile
+              await ref.read(scheduleListProvider.notifier).deleteSchedulesForProfile(profile.id);
+              // Delete the profile itself
               await ref.read(profileListProvider.notifier).deleteProfile(profile.id);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Deleted "${profile.name}"'),
+                    content: Text('Permanently deleted "${profile.name}" and all its schedules'),
                     behavior: SnackBarBehavior.floating,
+                    backgroundColor: const Color(0xFFDC2626),
                   ),
                 );
               }
             },
-            child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: const Text('Delete Profile', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -513,6 +518,7 @@ class ScheduleProfilesView extends ConsumerWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final profiles = ref.watch(profileListProvider);
+    final allSchedules = ref.watch(scheduleListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -557,6 +563,8 @@ class ScheduleProfilesView extends ConsumerWidget {
 
           final profile = profiles[index];
           final isSelected = profile.isActive;
+          final count = allSchedules.where((s) => s.profileId == profile.id).length;
+          final scheduleCountText = count == 0 ? 'No schedules' : '$count schedule${count > 1 ? 's' : ''}';
 
           return Dismissible(
             key: Key(profile.id),
@@ -622,17 +630,37 @@ class ScheduleProfilesView extends ConsumerWidget {
                   profile.name,
                   style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                 ),
-                subtitle: Text(
-                  isSelected
-                      ? 'Active • Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}'
-                      : 'Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isSelected
-                        ? const Color(0xFF2563EB)
-                        : (isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B)),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
+                subtitle: Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (isSelected) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'ACTIVE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF2563EB),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                    Text(
+                      '$scheduleCountText • Updated ${DateFormat('MMM d, yyyy').format(profile.updatedAt)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -682,7 +710,7 @@ class ScheduleProfilesView extends ConsumerWidget {
                             children: [
                               Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFDC2626)),
                               SizedBox(width: 10),
-                              Text('Delete Schedule', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))),
+                              Text('Delete Profile', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))),
                             ],
                           ),
                         ),

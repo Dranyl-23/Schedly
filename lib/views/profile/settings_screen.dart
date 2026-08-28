@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/sound_settings_provider.dart';
 import '../onboarding/workspace_setup_screen.dart';
+import '../settings/ai_settings_view.dart';
 import '../settings/widgets/alarm_tone_picker_modal.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -277,6 +278,60 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         Navigator.push(
                           context,
                           SmoothSlideFadeRoute(page: const WorkspaceSetupScreen()),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Section 4: AI Engines & API Keys
+              _buildSectionHeader('AI ENGINES & SCANNER', isDark),
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.hub_rounded, color: Color(0xFF8B5CF6), size: 20),
+                      ),
+                      title: const Text(
+                        'AI Engines & API Keys',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        'Configure Groq, Gemini, OpenRouter & Cloudflare AI',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SmoothSlideFadeRoute(page: const AiSettingsView()),
                         );
                       },
                     ),

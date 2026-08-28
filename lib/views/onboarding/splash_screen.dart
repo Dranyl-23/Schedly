@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/profile_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/user_setup_provider.dart';
 import '../navigation/main_navigation_shell.dart';
@@ -22,6 +23,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _floatController;
   late Animation<double> _floatAnimation;
+  bool _isReady = false;
+  bool _isNavigating = false;
 
   @override
   void initState() {
@@ -53,19 +56,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        await ref.read(userSetupProvider.notifier).checkAndRestoreCloudSetup(user.uid);
-        await ref.read(firestoreSyncServiceProvider).pullAndSyncAll();
-        ref.read(scheduleListProvider.notifier).refreshFromCloud();
+        await ref
+            .read(userSetupProvider.notifier)
+            .checkAndRestoreCloudSetup(user.uid)
+            .timeout(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+        await ref
+            .read(scheduleListProvider.notifier)
+            .refreshFromCloud()
+            .timeout(const Duration(milliseconds: 1500));
+        if (!mounted) return;
+        ref.read(profileListProvider.notifier).refreshFromLocal();
       } catch (_) {}
     }
 
-    await Future.delayed(const Duration(milliseconds: 2200));
+    if (mounted) {
+      setState(() => _isReady = true);
+    }
+
+    await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
     _navigateToNext();
   }
 
   void _navigateToNext() {
-    if (!mounted) return;
+    if (!mounted || _isNavigating) return;
+    _isNavigating = true;
     final user = FirebaseAuth.instance.currentUser;
     final auth = ref.read(authProvider);
     final isSetupDone = ref.read(userSetupProvider).isSetupCompleted;
@@ -106,7 +122,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: _navigateToNext,
+        onTap: _isReady ? _navigateToNext : null,
         child: Container(
           width: double.infinity,
           height: double.infinity,
@@ -255,43 +271,47 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
                       const Spacer(flex: 3),
 
-                      // Touch Screen to Continue Prompt
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.28),
-                            width: 1.2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 16,
-                              offset: const Offset(0, 4),
+                      // Touch Screen to Continue Prompt / Synchronization indicator
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Container(
+                          key: ValueKey(_isReady),
+                          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.28),
+                              width: 1.2,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.touch_app_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Touch screen to continue',
-                              style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white.withValues(alpha: 0.95),
-                                letterSpacing: 0.3,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isReady ? Icons.touch_app_rounded : Icons.sync_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isReady ? 'Touch screen to continue' : 'Preparing your workspace...',
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white.withValues(alpha: 0.95),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
                           .animate(onPlay: (controller) => controller.repeat(reverse: true))

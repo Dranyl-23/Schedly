@@ -86,4 +86,41 @@ class ProfileRepository {
   Future<void> deleteProfile(String id) async {
     await _safeBox.delete(id);
   }
+
+  Future<void> clearAll() async {
+    try {
+      await _safeBox.clear();
+    } catch (_) {}
+  }
+
+  Future<void> resetDefaultProfiles() async {
+    await clearAll();
+    final defaultProfiles = [
+      ScheduleProfile(
+        id: 'school-profile-1',
+        name: 'School Schedule',
+        type: 'school',
+        colorHex: '#2563EB',
+        isActive: true,
+      ),
+      ScheduleProfile(
+        id: 'work-profile-2',
+        name: 'Part-Time Job',
+        type: 'work',
+        colorHex: '#F97316',
+        isActive: false,
+      ),
+      ScheduleProfile(
+        id: 'duty-profile-3',
+        name: 'Duty Roster',
+        type: 'duty',
+        colorHex: '#10B981',
+        isActive: false,
+      ),
+    ];
+
+    for (final p in defaultProfiles) {
+      await _safeBox.put(p.id, jsonEncode(p.toJson()));
+    }
+  }
 }

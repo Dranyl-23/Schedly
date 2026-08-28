@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/firestore_sync_service.dart';
 import '../core/database/profile_repository.dart';
-import '../core/database/schedule_repository.dart';
 import '../models/schedule_profile.dart';
+import 'sync_provider.dart';
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ProfileRepository();
@@ -48,13 +48,16 @@ class ProfileNotifier extends StateNotifier<List<ScheduleProfile>> {
   void refreshFromLocal() {
     _load();
   }
+
+  void clearLocalMemory() {
+    state = [];
+  }
 }
 
 final profileListProvider =
     StateNotifierProvider<ProfileNotifier, List<ScheduleProfile>>((ref) {
   final repo = ref.watch(profileRepositoryProvider);
-  final scheduleRepo = ScheduleRepository();
-  final syncService = FirestoreSyncService(scheduleRepo, repo);
+  final syncService = ref.watch(firestoreSyncServiceProvider);
   return ProfileNotifier(repo, syncService);
 });
 
