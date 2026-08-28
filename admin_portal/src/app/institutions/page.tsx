@@ -360,7 +360,7 @@ export default function InstitutionsPage() {
         {/* Top Header Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
               <span>Live Cloud Directory ({institutions.length} Active Institutions across the Philippines)</span>
             </p>
           </div>
@@ -391,7 +391,7 @@ export default function InstitutionsPage() {
         </div>
 
         {/* Search, Region & Category Filter Bar */}
-        <div className="p-4 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col lg:flex-row items-center gap-4">
+        <div className="p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex flex-col lg:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -402,13 +402,13 @@ export default function InstitutionsPage() {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-50 border border-slate-200/70 text-slate-900 text-xs placeholder-slate-400 focus:outline-none focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-2 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D]/70 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Region Dropdown Filter */}
           <div className="flex items-center gap-2 w-full lg:w-auto">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/70 text-xs font-bold text-slate-700">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D]/70 text-xs font-bold text-slate-700 dark:text-slate-300">
               <MapPin className="w-3.5 h-3.5 text-slate-400" />
               <CustomDropdown
                 value={selectedRegion}
@@ -417,7 +417,7 @@ export default function InstitutionsPage() {
                   setCurrentPage(1);
                 }}
                 compact
-                buttonClassName="bg-transparent border-none p-0 text-slate-700 hover:text-blue-600"
+                buttonClassName="bg-transparent border-none p-0 text-slate-700 dark:text-slate-300 hover:text-blue-600"
                 options={[
                   { value: "All", label: "All Regions (PH)" },
                   ...regions.filter(r => r !== "All").map(reg => ({ value: reg, label: reg }))
@@ -437,7 +437,7 @@ export default function InstitutionsPage() {
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
                     selectedCategory === cat
                       ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
+                      : "bg-slate-100 dark:bg-[#25273A] text-slate-600 dark:text-slate-400 hover:bg-slate-200/80"
                   }`}
                 >
                   {cat}
@@ -451,10 +451,10 @@ export default function InstitutionsPage() {
         {isLoading ? (
           <SkeletonCardGrid count={8} />
         ) : filtered.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white border border-slate-200/70 text-slate-400 text-xs space-y-4">
+          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] text-slate-400 text-xs space-y-4">
             <School className="w-12 h-12 mx-auto text-slate-300" />
             <div>
-              <p className="font-bold text-sm text-slate-800">No institutions found</p>
+              <p className="font-bold text-sm text-slate-800 dark:text-slate-200">No institutions found</p>
               <p className="text-slate-400 mt-0.5">Click the button below to sync all 556 Philippine colleges, hospitals, and workplaces!</p>
             </div>
             <button
@@ -472,13 +472,13 @@ export default function InstitutionsPage() {
               {paginatedItems.map((item) => (
                 <div
                   key={item.id}
-                  className="p-5 rounded-3xl bg-white border border-slate-200/70 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                  className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3 mb-3">
                       {/* Emblem / Logo */}
                       <div 
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm text-white shadow-xs overflow-hidden bg-white border border-slate-100 p-1 shrink-0 relative"
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-sm text-white shadow-xs overflow-hidden bg-white border border-slate-100 dark:border-[#282A3D] p-1 shrink-0 relative"
                       >
                         {item.logoUrl ? (
                           <img 
@@ -504,23 +504,23 @@ export default function InstitutionsPage() {
                         </div>
                       </div>
 
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-700 truncate max-w-[120px]">
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
                         {item.shortName}
                       </span>
                     </div>
 
-                    <h4 className="font-extrabold text-sm text-slate-900 leading-snug line-clamp-2" title={item.name}>
+                    <h4 className="font-extrabold text-sm text-slate-900 dark:text-white leading-snug line-clamp-2" title={item.name}>
                       {item.name}
                     </h4>
 
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                       <span>{item.city}</span>
                       <span>•</span>
                       <span className="text-[11px] font-medium">{item.category}</span>
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 text-xs">
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-100 dark:border-[#282A3D] text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.themeColor || "#2563EB" }} />
                       <span className="text-[10px] font-mono text-slate-400">{item.regionCode || "PH"}</span>
@@ -529,7 +529,7 @@ export default function InstitutionsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(item)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:bg-[#25273A] text-slate-500 dark:text-slate-400 transition-colors"
                         title="Edit"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -549,8 +549,8 @@ export default function InstitutionsPage() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 rounded-3xl bg-white border border-slate-200/70 shadow-xs">
-                <p className="text-xs text-slate-500 font-semibold">
+              <div className="flex items-center justify-between p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                   Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} institutions
                 </p>
 
@@ -558,19 +558,19 @@ export default function InstitutionsPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 disabled:opacity-40 text-slate-600 transition-colors"
+                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
 
-                  <span className="px-3 py-1 text-xs font-bold text-slate-800">
+                  <span className="px-3 py-1 text-xs font-bold text-slate-800 dark:text-slate-200">
                     Page {currentPage} of {totalPages}
                   </span>
 
                   <button
                     onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 disabled:opacity-40 text-slate-600 transition-colors"
+                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -583,14 +583,14 @@ export default function InstitutionsPage() {
         {/* Add / Edit Institution Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                     <Building2 className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                       {editingId ? "Edit Institution" : "Add New Institution"}
                     </h3>
                     <p className="text-[11px] text-slate-400">Live sync to Reminda mobile apps</p>
@@ -598,7 +598,7 @@ export default function InstitutionsPage() {
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:bg-[#25273A] text-slate-400"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -607,7 +607,7 @@ export default function InstitutionsPage() {
               <form onSubmit={handleSaveInstitution} className="space-y-4 text-xs">
                 {/* 1. Drag & Drop Logo Uploader Box */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center justify-between">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[10px] flex items-center justify-between">
                     <span>Institution Logo (Free Cloud CDN)</span>
                     {uploadSuccess && (
                       <span className="text-emerald-600 font-bold flex items-center gap-1 normal-case text-[11px]">
@@ -637,22 +637,22 @@ export default function InstitutionsPage() {
                       isDragging 
                         ? "border-blue-500 bg-blue-50/50" 
                         : logoUrl 
-                        ? "border-slate-200 bg-slate-50/50 hover:border-slate-300" 
-                        : "border-slate-200 hover:border-blue-400 bg-slate-50/30"
+                        ? "border-slate-200 dark:border-[#282A3D] bg-slate-50 dark:bg-[#25273A]/60/50 hover:border-slate-300" 
+                        : "border-slate-200 dark:border-[#282A3D] hover:border-blue-400 bg-slate-50 dark:bg-[#25273A]/60/30"
                     }`}
                   >
                     {isUploading ? (
-                      <div className="flex flex-col items-center gap-2 py-3 text-slate-500">
+                      <div className="flex flex-col items-center gap-2 py-3 text-slate-500 dark:text-slate-400">
                         <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                         <span className="font-semibold text-xs">Uploading to Free Cloud CDN...</span>
                       </div>
                     ) : logoUrl ? (
                       <div className="flex items-center gap-3 w-full">
-                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center overflow-hidden shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 dark:border-[#282A3D] p-1 flex items-center justify-center overflow-hidden shrink-0">
                           <img src={logoUrl} alt="Preview" className="w-full h-full object-contain" />
                         </div>
                         <div className="flex-1 min-w-0 text-left">
-                          <p className="text-xs font-bold text-slate-900 truncate">Logo Uploaded</p>
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">Logo Uploaded</p>
                           <p className="text-[10px] text-slate-400 truncate font-mono">{logoUrl}</p>
                         </div>
                         <button
@@ -661,7 +661,7 @@ export default function InstitutionsPage() {
                             e.stopPropagation();
                             fileInputRef.current?.click();
                           }}
-                          className="px-3 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-[10px] hover:bg-slate-50"
+                          className="px-3 py-1 rounded-lg bg-white border border-slate-200 dark:border-[#282A3D] text-slate-700 dark:text-slate-300 font-bold text-[10px] hover:bg-slate-50 dark:bg-[#25273A]/60"
                         >
                           Change
                         </button>
@@ -671,7 +671,7 @@ export default function InstitutionsPage() {
                         <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-1">
                           <UploadCloud className="w-5 h-5" />
                         </div>
-                        <p className="text-xs font-bold text-slate-700">
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Drag & drop logo image here, or <span className="text-blue-600 underline">browse</span>
                         </p>
                         <p className="text-[10px] text-slate-400">PNG, JPG, or WEBP (Transparent background recommended)</p>
@@ -682,7 +682,7 @@ export default function InstitutionsPage() {
 
                 {/* Name */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Institution / University Name *
                   </label>
                   <input
@@ -691,14 +691,14 @@ export default function InstitutionsPage() {
                     placeholder="e.g. Davao del Sur State College"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 {/* Short Name & Category */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Acronym / Short Name *
                     </label>
                     <input
@@ -707,12 +707,12 @@ export default function InstitutionsPage() {
                       placeholder="e.g. DSSC"
                       value={shortName}
                       onChange={(e) => setShortName(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-500 font-bold"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 font-bold"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Sector Category
                     </label>
                     <CustomDropdown
@@ -731,7 +731,7 @@ export default function InstitutionsPage() {
                 {/* Region & City */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Region
                     </label>
                     <input
@@ -739,12 +739,12 @@ export default function InstitutionsPage() {
                       placeholder="e.g. Region XI — Davao Region"
                       value={regionCode}
                       onChange={(e) => setRegionCode(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       City / Location
                     </label>
                     <input
@@ -752,14 +752,14 @@ export default function InstitutionsPage() {
                       placeholder="e.g. Digos City"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Theme Color */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Brand Theme Color (Hex)
                   </label>
                   <div className="flex items-center gap-2">
@@ -767,23 +767,23 @@ export default function InstitutionsPage() {
                       type="color"
                       value={themeColor}
                       onChange={(e) => setThemeColor(e.target.value)}
-                      className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200"
+                      className="w-8 h-8 rounded-lg cursor-pointer border border-slate-200 dark:border-[#282A3D]"
                     />
                     <input
                       type="text"
                       value={themeColor}
                       onChange={(e) => setThemeColor(e.target.value)}
-                      className="flex-1 p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono focus:outline-none"
+                      className="flex-1 p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white font-mono focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#282A3D]">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 font-bold"
+                    className="px-4 py-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:bg-[#25273A] font-bold"
                   >
                     Cancel
                   </button>

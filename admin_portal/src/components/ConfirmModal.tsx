@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { X } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -9,57 +8,56 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  isDanger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  variant?: "danger" | "primary";
 }
 
 export function ConfirmModal({
   isOpen,
   title,
   message,
-  confirmText = "Delete",
+  confirmText = "Confirm",
   cancelText = "Cancel",
-  isDanger = true,
   onConfirm,
   onCancel,
+  variant = "danger",
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-1">
-          <h3 className="font-extrabold text-base text-slate-900">{title}</h3>
-          <button
-            onClick={onCancel}
-            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in zoom-in-95 duration-200">
+        <button
+          onClick={onCancel}
+          className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="space-y-2 pr-6">
+          <h3 className="font-extrabold text-base text-slate-900 dark:text-white leading-tight">
+            {title}
+          </h3>
+          <p className="text-xs text-slate-600 dark:text-[#9499B0] leading-relaxed">
+            {message}
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="space-y-1.5">
-          <p className="text-xs text-slate-500 leading-relaxed">{message}</p>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 text-xs font-bold">
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-[#282A3D]">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+            className="px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-600 dark:text-[#9499B0] hover:bg-slate-100 dark:hover:bg-[#25273A] transition-colors"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-5 py-2.5 rounded-xl text-white shadow-xs transition-colors ${
-              isDanger 
-                ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20" 
+            className={`px-5 py-2.5 rounded-2xl text-xs font-bold text-white shadow-sm transition-all hover:scale-102 ${
+              variant === "danger"
+                ? "bg-rose-600 hover:bg-rose-700 shadow-rose-600/20"
                 : "bg-blue-600 hover:bg-blue-700 shadow-blue-600/20"
             }`}
           >

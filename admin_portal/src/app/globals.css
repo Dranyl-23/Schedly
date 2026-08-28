@@ -1,17 +1,110 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+}
+
+html.dark {
+  --background: #14151F;
+  --foreground: #FFFFFF;
+  color-scheme: dark;
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Custom soft scrollbar */
+/* ========================================================= */
+/* BULLETPROOF EXACT REFERENCE DARK THEME (1-to-1 Match)     */
+/* ========================================================= */
+
+html.dark body {
+  background-color: #14151F !important;
+  color: #FFFFFF !important;
+}
+
+/* Cards & Surfaces */
+html.dark .bg-white {
+  background-color: #1C1D2B !important;
+  border-color: #282A3D !important;
+}
+
+/* Insets, Table Headers, Filter Chips */
+html.dark .bg-slate-50,
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50\/80,
+html.dark .bg-slate-50\/90 {
+  background-color: #25273A !important;
+  border-color: #282A3D !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #25273A !important;
+  color: #9499B0 !important;
+}
+
+/* Borders */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-200\/60,
+html.dark .border-slate-200\/70,
+html.dark .border-slate-200\/80,
+html.dark .border-slate-300 {
+  border-color: #282A3D !important;
+}
+
+html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #282A3D !important;
+}
+
+/* Typography Hierarchy */
+html.dark .text-slate-900,
+html.dark .text-slate-800 {
+  color: #FFFFFF !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600 {
+  color: #CBD5E1 !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-400 {
+  color: #9499B0 !important;
+}
+
+/* Form Controls & Inputs */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #25273A !important;
+  border-color: #282A3D !important;
+  color: #FFFFFF !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #6E738A !important;
+}
+
+/* Active Navigation Capsule in Dark Mode (Pure White Capsule Pill) */
+html.dark .sidebar-active-tab {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.35) !important;
+}
+
+html.dark .sidebar-active-tab * {
+  color: #0F172A !important;
+}
+
+/* Custom modern sleek scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -23,15 +116,21 @@ body {
   background: #cbd5e1;
   border-radius: 9999px;
 }
+.dark ::-webkit-scrollbar-thumb {
+  background: #282A3D;
+}
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3B3E59;
 }
 
 /* Executive Dashboard Animations */
 @keyframes fadeInScale {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.98);
+    transform: translateY(12px) scale(0.99);
   }
   100% {
     opacity: 1;
@@ -58,40 +157,20 @@ body {
 }
 
 @keyframes glowRadar {
-  0% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
   }
-  70% {
-    box-shadow: 0 0 0 12px rgba(99, 102, 241, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  50% {
+    opacity: 0.4;
+    transform: scale(1.4);
   }
 }
 
-.animate-fade-scale {
-  animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-draw-line {
-  stroke-dasharray: 1200;
-  stroke-dashoffset: 1200;
-  animation: drawLine 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-float {
-  animation: floatGentle 4s ease-in-out infinite;
-}
-
-.animate-glow-radar {
-  animation: glowRadar 2s infinite;
-}
-
-/* Seamless Page Route Transitions */
 @keyframes pageEnter {
   0% {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   100% {
     opacity: 1;
@@ -99,6 +178,23 @@ body {
   }
 }
 
+.animate-fade-scale {
+  animation: fadeInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-draw-line {
+  stroke-dasharray: 1200;
+  animation: drawLine 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+  animation: floatGentle 3s ease-in-out infinite;
+}
+
+.animate-glow-radar {
+  animation: glowRadar 2s ease-in-out infinite;
+}
+
 .animate-page-enter {
-  animation: pageEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: pageEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

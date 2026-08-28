@@ -184,7 +184,7 @@ export default function AnnouncementsPage() {
         {/* Top Header Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 font-semibold flex items-center gap-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
               <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
               <span>Realtime In-App Banner Broadcaster. Any active notices appear immediately at the top of users&apos; Home screens.</span>
             </p>
@@ -203,9 +203,9 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <SkeletonCardGrid count={4} />
         ) : announcements.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white border border-slate-200/70 text-slate-400 text-xs space-y-3">
+          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] text-slate-400 text-xs space-y-3">
             <Megaphone className="w-10 h-10 mx-auto text-slate-300" />
-            <p className="font-semibold text-slate-800 text-sm">No announcements broadcasted yet</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">No announcements broadcasted yet</p>
             <p className="text-slate-400">Post advisories, maintenance news, or feature updates to all mobile users.</p>
             <button
               onClick={openAddModal}
@@ -226,8 +226,8 @@ export default function AnnouncementsPage() {
                   key={item.id}
                   className={`p-6 rounded-3xl border transition-all ${
                     item.isActive 
-                      ? "bg-white border-slate-200/90 shadow-sm" 
-                      : "bg-slate-50/60 border-slate-200/50 opacity-75"
+                      ? "bg-white border-slate-200 dark:border-[#282A3D]/90 shadow-sm" 
+                      : "bg-slate-50 dark:bg-[#25273A]/60/60 border-slate-200 dark:border-[#282A3D]/50 opacity-75"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
@@ -243,7 +243,7 @@ export default function AnnouncementsPage() {
                           Live on Mobile
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-[#25273A] text-slate-500 dark:text-slate-400">
                           Inactive / Draft
                         </span>
                       )}
@@ -252,7 +252,7 @@ export default function AnnouncementsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(item)}
-                        className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+                        className="p-1.5 rounded-xl hover:bg-slate-100 dark:bg-[#25273A] text-slate-500 dark:text-slate-400 transition-colors"
                         title="Edit Announcement"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -267,17 +267,17 @@ export default function AnnouncementsPage() {
                     </div>
                   </div>
 
-                  <h3 className="font-extrabold text-slate-900 text-sm mb-1.5">{item.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap mb-4">{item.message}</p>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm mb-1.5">{item.title}</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap mb-4">{item.message}</p>
 
                   {/* Actions & Preview Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-[#282A3D] text-xs">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleToggleActive(item.id, item.isActive)}
                         className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-colors ${
                           item.isActive
-                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            ? "bg-slate-100 dark:bg-[#25273A] hover:bg-slate-200 text-slate-700 dark:text-slate-300"
                             : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                         }`}
                       >
@@ -285,7 +285,7 @@ export default function AnnouncementsPage() {
                       </button>
 
                       {item.actionLabel && (
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-bold text-[10px] flex items-center gap-1">
+                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#25273A] text-slate-600 dark:text-slate-400 font-bold text-[10px] flex items-center gap-1">
                           Button: {item.actionLabel}
                         </span>
                       )}
@@ -304,14 +304,14 @@ export default function AnnouncementsPage() {
         {/* Create / Edit Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                     <Megaphone className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
                       {editingId ? "Edit Announcement" : "Create In-App Announcement"}
                     </h3>
                     <p className="text-[11px] text-slate-400">Broadcasts directly to Reminda home screens</p>
@@ -319,7 +319,7 @@ export default function AnnouncementsPage() {
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400"
+                  className="p-1.5 rounded-xl hover:bg-slate-100 dark:bg-[#25273A] text-slate-400"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -328,7 +328,7 @@ export default function AnnouncementsPage() {
               <form onSubmit={handleSaveAnnouncement} className="space-y-4 text-xs">
                 {/* Title */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Banner Headline / Title *
                   </label>
                   <input
@@ -337,13 +337,13 @@ export default function AnnouncementsPage() {
                     placeholder="e.g. Reminda v1.0.1 Update Released!"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-bold focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 {/* Message */}
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Message / Advisory Content *
                   </label>
                   <textarea
@@ -352,14 +352,14 @@ export default function AnnouncementsPage() {
                     placeholder="e.g. We have upgraded the Offline Neural Vision scanner for 3x faster timetable parsing."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 leading-relaxed focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white leading-relaxed focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 {/* Type & Broadcast Status */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Notice Priority / Type
                     </label>
                     <CustomDropdown
@@ -375,7 +375,7 @@ export default function AnnouncementsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Broadcast Status
                     </label>
                     <CustomDropdown
@@ -392,7 +392,7 @@ export default function AnnouncementsPage() {
                 {/* Action Button (Optional) */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Action Button Text (Optional)
                     </label>
                     <input
@@ -400,12 +400,12 @@ export default function AnnouncementsPage() {
                       placeholder="e.g. Learn More or Update App"
                       value={actionLabel}
                       onChange={(e) => setActionLabel(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                       Action Web / Store URL (Optional)
                     </label>
                     <input
@@ -413,20 +413,20 @@ export default function AnnouncementsPage() {
                       placeholder="https://..."
                       value={actionUrl}
                       onChange={(e) => setActionUrl(e.target.value)}
-                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Live Mobile In-App Preview */}
-                <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-[#25273A] border border-slate-200 dark:border-[#282A3D] space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Smartphone className="w-3.5 h-3.5 text-slate-400" />
                     Live Mobile Banner Preview
                   </p>
                   <div className={`p-3 rounded-xl border text-xs ${getTypeStyle(type).bg}`}>
-                    <p className="font-extrabold text-slate-900">{title || "Your Announcement Title Here"}</p>
-                    <p className="text-[11px] text-slate-700 mt-0.5">{message || "Your message will appear here for all users in the mobile app."}</p>
+                    <p className="font-extrabold text-slate-900 dark:text-white">{title || "Your Announcement Title Here"}</p>
+                    <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-0.5">{message || "Your message will appear here for all users in the mobile app."}</p>
                     {actionLabel && (
                       <span className="inline-block mt-2 px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[10px]">
                         {actionLabel}
@@ -436,11 +436,11 @@ export default function AnnouncementsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#282A3D]">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 font-bold"
+                    className="px-4 py-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:bg-[#25273A] font-bold"
                   >
                     Cancel
                   </button>

@@ -88,7 +88,7 @@ export default function ConfigPage() {
         {/* Top Header Information */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 font-semibold">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
               Live Cloud Feature Flags. Instantly control AI Cloud engines, enforce minimum versions, or activate maintenance mode across all mobile devices.
             </p>
           </div>
@@ -105,25 +105,25 @@ export default function ConfigPage() {
 
         <form onSubmit={handleSaveConfig} className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
           {/* Card 1: AI Cloud Fallback Switch */}
-          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] shadow-xs space-y-5 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
                   <Cpu className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Gemini Cloud AI Engine Fallback</h3>
-                  <p className="text-[11px] text-slate-500">Secondary cloud engine for handwritten notes</p>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Gemini Cloud AI Engine Fallback</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Secondary cloud engine for handwritten notes</p>
                 </div>
               </div>
 
-              <p className="text-slate-600 text-xs leading-relaxed mb-4">
+              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed mb-4">
                 When enabled, mobile apps will query Gemini 1.5 Flash if on-device offline OCR detects difficult handwriting. You can disable this during maintenance or to save API quota.
               </p>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D]/70 flex items-center justify-between">
                 <div>
-                  <p className="font-extrabold text-slate-900 text-xs">
+                  <p className="font-extrabold text-slate-900 dark:text-white text-xs">
                     {config.geminiOnlineFallbackEnabled ? "Online Cloud AI is Active" : "Online Cloud AI is Paused"}
                   </p>
                   <p className="text-[11px] text-slate-400">
@@ -139,7 +139,7 @@ export default function ConfigPage() {
                   className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
                     config.geminiOnlineFallbackEnabled 
                       ? "bg-indigo-600 text-white shadow-xs" 
-                      : "bg-slate-200 text-slate-700"
+                      : "bg-slate-200 text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   <Power className="w-3.5 h-3.5" />
@@ -155,59 +155,59 @@ export default function ConfigPage() {
           </div>
 
           {/* Card 2: App Version Enforcer & Force Update */}
-          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-5 flex flex-col justify-between">
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] shadow-xs space-y-5 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                   <Smartphone className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Version Control & Force Update</h3>
-                  <p className="text-[11px] text-slate-500">Require users to upgrade to the latest release</p>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">Version Control & Force Update</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Require users to upgrade to the latest release</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Min Required Version
                   </label>
                   <input
                     type="text"
                     value={config.minRequiredAppVersion}
                     onChange={(e) => setConfig({ ...config, minRequiredAppVersion: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-900 font-bold focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] font-mono text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                     Latest Release Version
                   </label>
                   <input
                     type="text"
                     value={config.latestAppVersion}
                     onChange={(e) => setConfig({ ...config, latestAppVersion: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-slate-900 font-bold focus:outline-none focus:border-blue-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] font-mono text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
               <div className="space-y-1 mb-3">
-                <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+                <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                   Store / APK Download URL
                 </label>
                 <input
                   type="url"
                   value={config.updateStoreUrl}
                   onChange={(e) => setConfig({ ...config, updateStoreUrl: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D]/70 flex items-center justify-between">
                 <div>
-                  <p className="font-extrabold text-slate-900 text-xs">
+                  <p className="font-extrabold text-slate-900 dark:text-white text-xs">
                     {config.forceUpdateEnabled ? "Force Update Active" : "Optional Updates"}
                   </p>
                   <p className="text-[11px] text-slate-400">
@@ -223,7 +223,7 @@ export default function ConfigPage() {
                   className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
                     config.forceUpdateEnabled 
                       ? "bg-rose-600 text-white shadow-xs" 
-                      : "bg-slate-200 text-slate-700"
+                      : "bg-slate-200 text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   {config.forceUpdateEnabled ? "Forcing Update" : "Disabled"}
@@ -233,15 +233,15 @@ export default function ConfigPage() {
           </div>
 
           {/* Card 3: App-Wide Maintenance Advisory Mode */}
-          <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-4 lg:col-span-2">
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] shadow-xs space-y-4 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
                   <ShieldAlert className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">System Maintenance Mode Kill-Switch</h3>
-                  <p className="text-[11px] text-slate-500">Show advisory banner across all active apps during database maintenance</p>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">System Maintenance Mode Kill-Switch</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Show advisory banner across all active apps during database maintenance</p>
                 </div>
               </div>
 
@@ -251,7 +251,7 @@ export default function ConfigPage() {
                 className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
                   config.maintenanceMode 
                     ? "bg-amber-500 text-white shadow-xs" 
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-slate-100 dark:bg-[#25273A] text-slate-600 dark:text-slate-400 hover:bg-slate-200"
                 }`}
               >
                 <Power className="w-3.5 h-3.5" />
@@ -260,14 +260,14 @@ export default function ConfigPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="font-bold text-slate-600 uppercase tracking-wider text-[10px]">
+              <label className="font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
                 Maintenance Banner Notice
               </label>
               <textarea
                 rows={2}
                 value={config.maintenanceMessage}
                 onChange={(e) => setConfig({ ...config, maintenanceMessage: e.target.value })}
-                className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:border-blue-500 leading-relaxed"
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 leading-relaxed"
               />
             </div>
           </div>

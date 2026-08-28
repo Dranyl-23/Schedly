@@ -2,7 +2,8 @@ export interface UserFeedback {
   id: string;
   rating: number;
   category: string;
-  message: string;
+  message?: string;
+  comment?: string;
   contactEmail: string;
   userName: string;
   userId: string;

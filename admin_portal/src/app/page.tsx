@@ -183,16 +183,21 @@ export default function AnalyticsDashboard() {
     const hospitals = institutions.filter(i => i.category?.includes("Hospital") || i.category?.includes("Clinic")).length || 65;
     const corporate = totalInst - colleges - hospitals;
 
-    const studentPct = Math.round((colleges / totalInst) * 100) || 72;
-    const healthPct = Math.round((hospitals / totalInst) * 100) || 16;
-    const workPct = Math.max(100 - studentPct - healthPct, 12);
+    const studentPct = Math.round((colleges / totalInst) * 100) || 62;
+    const workPct = Math.max(Math.round((corporate / totalInst) * 100), 26);
+    const healthPct = Math.max(100 - studentPct - workPct, 12);
+
+    const gap = 1.6;
 
     return {
       student: studentPct,
-      health: healthPct,
       work: workPct,
-      offsetHealth: -(studentPct),
-      offsetWork: -(studentPct + healthPct)
+      health: healthPct,
+      studentDash: Math.max(studentPct - gap, 1),
+      workDash: Math.max(workPct - gap, 1),
+      healthDash: Math.max(healthPct - gap, 1),
+      offsetWork: -(studentPct),
+      offsetHealth: -(studentPct + workPct)
     };
   }, [institutions]);
 
@@ -250,11 +255,15 @@ export default function AnalyticsDashboard() {
 
   // 8. Dynamic AI Engine Source Donut (Offline ML vs Cloud Gemini)
   const engineBreakdown = useMemo(() => {
-    const offlinePct = 80;
-    const cloudPct = 20;
+    const offlinePct = 70;
+    const cloudPct = 30;
+    const gap = 1.8;
     return {
       offline: offlinePct,
       cloud: cloudPct,
+      offlineDash: offlinePct - gap,
+      cloudDash: cloudPct - gap,
+      offsetCloud: -(offlinePct)
     };
   }, []);
 
@@ -274,16 +283,16 @@ export default function AnalyticsDashboard() {
                 {/* Card 1: Scanned Schedules */}
                 <div 
                   style={{ animationDelay: "0ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-300 transition-all duration-300 group cursor-default"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-300 transition-all duration-300 group cursor-default"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">Schedules Scanned</span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Schedules Scanned</span>
                     <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                       <FileText className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="my-2">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                       {animatedScans}
                     </p>
                   </div>
@@ -296,16 +305,16 @@ export default function AnalyticsDashboard() {
                 {/* Card 2: AI OCR Accuracy */}
                 <div 
                   style={{ animationDelay: "100ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-emerald-300 transition-all duration-300 group cursor-default"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-emerald-300 transition-all duration-300 group cursor-default"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">Verified Accuracy</span>
-                    <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Verified Accuracy</span>
+                    <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                       <CheckSquare className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="my-2">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">{verifiedAccuracy}</p>
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{verifiedAccuracy}</p>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
                     <TrendingUp className="w-3.5 h-3.5" />
@@ -316,16 +325,16 @@ export default function AnalyticsDashboard() {
                 {/* Card 3: Total AI Dataset */}
                 <div 
                   style={{ animationDelay: "200ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-purple-300 transition-all duration-300 group cursor-default"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-purple-300 transition-all duration-300 group cursor-default"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">AI Dataset Telemetry</span>
-                    <div className="p-2.5 rounded-2xl bg-purple-50 text-purple-600 group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">AI Dataset Telemetry</span>
+                    <div className="p-2.5 rounded-2xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 group-hover:scale-110 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
                       <Sparkles className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="my-2">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight">
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                       {animatedAiSamples}
                     </p>
                   </div>
@@ -340,16 +349,16 @@ export default function AnalyticsDashboard() {
                 {/* Card 4: Average App Rating */}
                 <div 
                   style={{ animationDelay: "300ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 transition-all duration-300 group cursor-default"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-amber-300 transition-all duration-300 group cursor-default"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500">Customer Rating</span>
-                    <div className="p-2.5 rounded-2xl bg-amber-50 text-amber-600 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Customer Rating</span>
+                    <div className="p-2.5 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
                       <Star className="w-4 h-4" />
                     </div>
                   </div>
                   <div className="my-2">
-                    <p className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-1">
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1">
                       <span>{averageRating}</span>
                       <span className="text-yellow-500 text-2xl animate-pulse">★</span>
                     </p>
@@ -366,68 +375,75 @@ export default function AnalyticsDashboard() {
                 {/* Donut Card 1: Users by Sector */}
                 <div 
                   style={{ animationDelay: "400ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-200 transition-all duration-300"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-200 transition-all duration-300"
                 >
                   <div>
-                    <span className="text-xs font-semibold text-slate-500">Active Mobile Users</span>
-                    <p className="text-3xl font-black text-slate-900 tracking-tight mt-1">{animatedUsers}</p>
-                    <p className="text-[11px] text-slate-400 font-medium">Realtime registered devices</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Active Mobile Users</span>
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{animatedUsers}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">Realtime registered devices</p>
                   </div>
 
                   <div className="flex items-center justify-between mt-4">
-                    {/* Dynamic SVG Segmented Donut */}
-                    <div className="relative w-24 h-24 shrink-0 hover:scale-105 transition-transform duration-300">
-                      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="14" fill="transparent" stroke="#E2E8F0" strokeWidth="4" />
+                    {/* Dynamic SVG Thick Gold Segmented Donut (Reference Exact Match) */}
+                    <div className="relative w-28 h-28 shrink-0 hover:scale-105 transition-transform duration-300">
+                      <svg className="w-full h-full -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
+                        {/* Background Base Ring */}
+                        <circle cx="18" cy="18" r="13" fill="transparent" stroke="#25273A" strokeWidth="7" />
+                        
+                        {/* Segment 1: Vivid Gold (62% Colleges/Students) */}
                         <circle 
                           cx="18" 
                           cy="18" 
-                          r="14" 
+                          r="13" 
                           fill="transparent" 
-                          stroke="#3B82F6" 
-                          strokeWidth="4" 
-                          strokeDasharray={`${sectorBreakdown.student} 100`} 
+                          stroke="#FFB800" 
+                          strokeWidth="7" 
+                          strokeDasharray={`${sectorBreakdown.studentDash} ${100 - sectorBreakdown.studentDash}`} 
                           strokeDashoffset="0" 
                           className="transition-all duration-1000 ease-out"
                         />
+                        
+                        {/* Segment 2: Warm Soft Yellow (26% Workplace) */}
                         <circle 
                           cx="18" 
                           cy="18" 
-                          r="14" 
+                          r="13" 
                           fill="transparent" 
-                          stroke="#10B981" 
-                          strokeWidth="4" 
-                          strokeDasharray={`${sectorBreakdown.health} 100`} 
-                          strokeDashoffset={`${sectorBreakdown.offsetHealth}`} 
+                          stroke="#FCD34D" 
+                          strokeWidth="7" 
+                          strokeDasharray={`${sectorBreakdown.workDash} ${100 - sectorBreakdown.workDash}`} 
+                          strokeDashoffset={`${sectorBreakdown.offsetWork}`} 
                           className="transition-all duration-1000 ease-out"
                         />
+                        
+                        {/* Segment 3: Vanilla Cream (12% Healthcare) */}
                         <circle 
                           cx="18" 
                           cy="18" 
-                          r="14" 
+                          r="13" 
                           fill="transparent" 
-                          stroke="#F59E0B" 
-                          strokeWidth="4" 
-                          strokeDasharray={`${sectorBreakdown.work} 100`} 
-                          strokeDashoffset={`${sectorBreakdown.offsetWork}`} 
+                          stroke="#FEF3C7" 
+                          strokeWidth="7" 
+                          strokeDasharray={`${sectorBreakdown.healthDash} ${100 - sectorBreakdown.healthDash}`} 
+                          strokeDashoffset={`${sectorBreakdown.offsetHealth}`} 
                           className="transition-all duration-1000 ease-out"
                         />
                       </svg>
                     </div>
 
                     {/* Legend */}
-                    <div className="space-y-1.5 text-[11px] font-semibold text-slate-600">
-                      <div className="flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                        <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs" />
-                        <span>{sectorBreakdown.student}% <span className="text-slate-400 font-normal">Students</span></span>
+                    <div className="space-y-1.5 text-[11px] font-semibold text-slate-600 dark:text-[#9499B0]">
+                      <div className="flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FFB800] shadow-xs" />
+                        <span>{sectorBreakdown.student}% <span className="text-slate-400 dark:text-[#6E738A] font-normal">Students</span></span>
                       </div>
-                      <div className="flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs" />
-                        <span>{sectorBreakdown.health}% <span className="text-slate-400 font-normal">Healthcare</span></span>
+                      <div className="flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FCD34D] shadow-xs" />
+                        <span>{sectorBreakdown.work}% <span className="text-slate-400 dark:text-[#6E738A] font-normal">Workplace</span></span>
                       </div>
-                      <div className="flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 shadow-xs" />
-                        <span>{sectorBreakdown.work}% <span className="text-slate-400 font-normal">Workplace</span></span>
+                      <div className="flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FEF3C7] shadow-xs" />
+                        <span>{sectorBreakdown.health}% <span className="text-slate-400 dark:text-[#6E738A] font-normal">Healthcare</span></span>
                       </div>
                     </div>
                   </div>
@@ -436,53 +452,58 @@ export default function AnalyticsDashboard() {
                 {/* Donut Card 2: AI OCR Sources */}
                 <div 
                   style={{ animationDelay: "500ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-indigo-200 transition-all duration-300"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-indigo-200 transition-all duration-300"
                 >
                   <div>
-                    <span className="text-xs font-semibold text-slate-500">Scan Engine Processing</span>
-                    <p className="text-3xl font-black text-slate-900 tracking-tight mt-1">{animatedScans}</p>
-                    <p className="text-[11px] text-slate-400 font-medium">Total OCR operations</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-[#9499B0]">Scan Engine Processing</span>
+                    <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{animatedScans}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-[#6E738A] font-medium">Total OCR operations</p>
                   </div>
 
                   <div className="flex items-center justify-between mt-4">
-                    {/* SVG Segmented Donut */}
-                    <div className="relative w-24 h-24 shrink-0 hover:scale-105 transition-transform duration-300">
-                      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                        <circle cx="18" cy="18" r="14" fill="transparent" stroke="#E2E8F0" strokeWidth="4" />
+                    {/* SVG Segmented Thick Blue Duo Donut (Reference Exact Match) */}
+                    <div className="relative w-28 h-28 shrink-0 hover:scale-105 transition-transform duration-300">
+                      <svg className="w-full h-full -rotate-90 drop-shadow-sm" viewBox="0 0 36 36">
+                        {/* Background Base Ring */}
+                        <circle cx="18" cy="18" r="13" fill="transparent" stroke="#25273A" strokeWidth="7" />
+                        
+                        {/* Segment 1: Electric Blue (70% On-Device ML) */}
                         <circle 
                           cx="18" 
                           cy="18" 
-                          r="14" 
+                          r="13" 
                           fill="transparent" 
-                          stroke="#2563EB" 
-                          strokeWidth="4" 
-                          strokeDasharray={`${engineBreakdown.offline} 100`} 
+                          stroke="#3B82F6" 
+                          strokeWidth="7" 
+                          strokeDasharray={`${engineBreakdown.offlineDash} ${100 - engineBreakdown.offlineDash}`} 
                           strokeDashoffset="0" 
                           className="transition-all duration-1000 ease-out"
                         />
+                        
+                        {/* Segment 2: Soft Azure Blue (30% Cloud Gemini) */}
                         <circle 
                           cx="18" 
                           cy="18" 
-                          r="14" 
+                          r="13" 
                           fill="transparent" 
-                          stroke="#60A5FA" 
-                          strokeWidth="4" 
-                          strokeDasharray={`${engineBreakdown.cloud} 100`} 
-                          strokeDashoffset={`-${engineBreakdown.offline}`} 
+                          stroke="#93C5FD" 
+                          strokeWidth="7" 
+                          strokeDasharray={`${engineBreakdown.cloudDash} ${100 - engineBreakdown.cloudDash}`} 
+                          strokeDashoffset={`${engineBreakdown.offsetCloud}`} 
                           className="transition-all duration-1000 ease-out"
                         />
                       </svg>
                     </div>
 
                     {/* Legend */}
-                    <div className="space-y-1.5 text-[11px] font-semibold text-slate-600">
-                      <div className="flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                        <span className="w-2 h-2 rounded-full bg-blue-600 shadow-xs" />
-                        <span>{engineBreakdown.offline}% <span className="text-slate-400 font-normal">On-Device ML</span></span>
+                    <div className="space-y-1.5 text-[11px] font-semibold text-slate-600 dark:text-[#9499B0]">
+                      <div className="flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6] shadow-xs" />
+                        <span>{engineBreakdown.offline}% <span className="text-slate-400 dark:text-[#6E738A] font-normal">On-Device ML</span></span>
                       </div>
-                      <div className="flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                        <span className="w-2 h-2 rounded-full bg-blue-400 shadow-xs" />
-                        <span>{engineBreakdown.cloud}% <span className="text-slate-400 font-normal">Cloud Gemini</span></span>
+                      <div className="flex items-center gap-2 hover:translate-x-1 transition-transform">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#93C5FD] shadow-xs" />
+                        <span>{engineBreakdown.cloud}% <span className="text-slate-400 dark:text-[#6E738A] font-normal">Cloud Gemini</span></span>
                       </div>
                     </div>
                   </div>
@@ -495,15 +516,15 @@ export default function AnalyticsDashboard() {
               {/* Left: Dynamic Monthly Bar Chart (Col 1-7) */}
               <div 
                 style={{ animationDelay: "600ms" }}
-                className="animate-fade-scale lg:col-span-7 p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300"
+                className="animate-fade-scale lg:col-span-7 p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Schedule Ingestion Dynamics</span>
                       <Zap className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
                     </h3>
-                    <p className="text-[11px] text-slate-400">Monthly breakdown of scanned study loads and timetables</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300">Monthly breakdown of scanned study loads and timetables</p>
                   </div>
                   
                   {/* Dynamic Year Selector Dropdown */}
@@ -511,7 +532,7 @@ export default function AnalyticsDashboard() {
                     value={selectedYear}
                     onChange={setSelectedYear}
                     compact
-                    buttonClassName="bg-slate-50 border border-slate-200 text-slate-700 font-bold"
+                    buttonClassName="bg-slate-50 dark:bg-[#25273A] border border-slate-200 dark:border-[#282A3D] text-slate-700 dark:text-slate-200 font-bold"
                     options={["2026", "2025", "2024"]}
                   />
                 </div>
@@ -520,12 +541,12 @@ export default function AnalyticsDashboard() {
                 <div className="flex items-end justify-between h-44 px-2 pt-4">
                   {monthlyData.map((col, idx) => (
                     <div key={idx} className="flex flex-col items-center gap-2 group flex-1">
-                      <div className="w-4 sm:w-5 bg-slate-100 rounded-full h-32 flex items-end overflow-hidden p-0.5 relative group-hover:bg-blue-50 transition-colors">
+                      <div className="w-4 sm:w-5 bg-slate-100 dark:bg-[#25273A] rounded-full h-32 flex items-end overflow-hidden p-0.5 relative group-hover:bg-blue-50 transition-colors">
                         <div
                           className={`w-full rounded-full transition-all duration-700 ease-out group-hover:scale-y-105 ${
                             col.isActive 
-                              ? "bg-gradient-to-t from-blue-700 to-blue-500 shadow-md shadow-blue-500/30" 
-                              : "bg-gradient-to-t from-blue-500/70 to-blue-400/80 hover:from-blue-600 hover:to-blue-400"
+                              ? "bg-linear-to-t from-blue-700 to-blue-500 shadow-md shadow-blue-500/30" 
+                              : "bg-linear-to-t from-blue-500/70 to-blue-400/80 hover:from-blue-600 hover:to-blue-400"
                           }`}
                           style={{ 
                             height: col.height,
@@ -534,7 +555,7 @@ export default function AnalyticsDashboard() {
                         />
                       </div>
                       <span className={`text-[10px] font-bold transition-colors ${
-                        col.isActive ? "text-blue-600 font-black scale-110" : "text-slate-400 group-hover:text-slate-800"
+                        col.isActive ? "text-blue-600 font-black scale-110" : "text-slate-400 group-hover:text-slate-800 dark:text-slate-200"
                       }`}>
                         {col.month}
                       </span>
@@ -548,40 +569,40 @@ export default function AnalyticsDashboard() {
                 {/* Card 1: OCR Processing Latency */}
                 <div 
                   style={{ animationDelay: "700ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-200 transition-all duration-300 group"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-blue-200 transition-all duration-300 group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
                       <Wallet className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/50">
+                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50">
                       0.3s Offline
                     </span>
                   </div>
                   <div className="my-4">
-                    <span className="text-xs font-semibold text-slate-500">Average OCR Latency</span>
-                    <p className="text-2xl font-black text-slate-900 tracking-tight mt-1">0.34s</p>
-                    <p className="text-[11px] text-slate-400 font-medium">MMA Spatial Vision Engine</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Average OCR Latency</span>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">0.34s</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">MMA Spatial Vision Engine</p>
                   </div>
                 </div>
 
                 {/* Card 2: Cloud Sync Reliability */}
                 <div 
                   style={{ animationDelay: "800ms" }}
-                  className="animate-fade-scale p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-emerald-200 transition-all duration-300 group"
+                  className="animate-fade-scale p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg hover:-translate-y-1 hover:border-emerald-200 transition-all duration-300 group"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                    <div className="p-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
                       <DollarSign className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/50">
+                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50">
                       100% Live
                     </span>
                   </div>
                   <div className="my-4">
-                    <span className="text-xs font-semibold text-slate-500">Cloud Sync Reliability</span>
-                    <p className="text-2xl font-black text-slate-900 tracking-tight mt-1">99.99%</p>
-                    <p className="text-[11px] text-slate-400 font-medium">Firestore WebSocket Channel</p>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-300">Cloud Sync Reliability</span>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">99.99%</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300 font-medium">Firestore WebSocket Channel</p>
                   </div>
                 </div>
               </div>
@@ -592,18 +613,18 @@ export default function AnalyticsDashboard() {
               {/* Left: Dynamic Animated Spline Chart (Col 1-7) */}
               <div 
                 style={{ animationDelay: "900ms" }}
-                className="animate-fade-scale lg:col-span-7 p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300 relative overflow-hidden group"
+                className="animate-fade-scale lg:col-span-7 p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300 relative overflow-hidden group"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-extrabold text-sm text-slate-900">User Activity & Retention</h3>
-                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200/60 shadow-xs">
+                      <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">User Activity & Retention</h3>
+                      <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 shadow-xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
                         Live Stream
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400">Weekly active mobile engagement trajectory</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300">Weekly active mobile engagement trajectory</p>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -611,18 +632,18 @@ export default function AnalyticsDashboard() {
                       value={selectedMonth}
                       onChange={setSelectedMonth}
                       compact
-                      buttonClassName="bg-slate-50 border border-slate-200 text-slate-700 font-bold"
+                      buttonClassName="bg-slate-50 dark:bg-[#25273A] border border-slate-200 dark:border-[#282A3D] text-slate-700 dark:text-slate-200 font-bold"
                       options={["August 2026", "July 2026", "June 2026", "All Time"]}
                     />
                   </div>
                 </div>
 
                 {/* Hover Tooltip Indicator Badge */}
-                <div className="flex items-center justify-between py-1.5 px-3 bg-slate-50/90 rounded-2xl border border-slate-100/90 mb-2 transition-all duration-300">
+                <div className="flex items-center justify-between py-1.5 px-3 bg-slate-50/90 dark:bg-[#25273A]/80 rounded-2xl border border-slate-100/90 dark:border-[#282A3D] mb-2 transition-all duration-300">
                   <div className="flex items-center gap-4 text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className="text-slate-400 font-medium">Selected Period:</span>
-                      <span className="font-bold text-slate-800">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">
                         {hoveredPoint !== null ? activityPoints[hoveredPoint]?.label : activityPoints[activityPoints.length - 1]?.label}
                       </span>
                     </div>
@@ -659,9 +680,9 @@ export default function AnalyticsDashboard() {
                     </defs>
 
                     {/* Subtle Horizontal Grid lines */}
-                    <line x1="0" y1="20" x2="600" y2="20" stroke="#F1F5F9" strokeDasharray="4 4" strokeWidth="1" />
-                    <line x1="0" y1="65" x2="600" y2="65" stroke="#F1F5F9" strokeDasharray="4 4" strokeWidth="1" />
-                    <line x1="0" y1="110" x2="600" y2="110" stroke="#F1F5F9" strokeDasharray="4 4" strokeWidth="1" />
+                    <line x1="0" y1="20" x2="600" y2="20" stroke="#282A3D" strokeDasharray="4 4" strokeWidth="1" />
+                    <line x1="0" y1="65" x2="600" y2="65" stroke="#282A3D" strokeDasharray="4 4" strokeWidth="1" />
+                    <line x1="0" y1="110" x2="600" y2="110" stroke="#282A3D" strokeDasharray="4 4" strokeWidth="1" />
 
                     {/* Area Gradient Fill */}
                     <path
@@ -739,7 +760,7 @@ export default function AnalyticsDashboard() {
                 </div>
 
                 {/* Bottom X-Axis Dynamic Labels */}
-                <div className="flex items-center justify-between px-2 pt-2 border-t border-slate-100 mt-2">
+                <div className="flex items-center justify-between px-2 pt-2 border-t border-slate-100 dark:border-[#282A3D] mt-2">
                   {activityPoints.map((pt, idx) => (
                     <button
                       key={idx}
@@ -749,7 +770,7 @@ export default function AnalyticsDashboard() {
                           ? "text-indigo-600 font-black scale-110"
                           : idx === activityPoints.length - 1
                           ? "text-emerald-600 font-extrabold"
-                          : "text-slate-400 hover:text-slate-800"
+                          : "text-slate-400 hover:text-slate-800 dark:text-slate-200"
                       }`}
                     >
                       {pt.label}
@@ -761,12 +782,12 @@ export default function AnalyticsDashboard() {
               {/* Right: Live Feedbacks Table (Col 8-12) */}
               <div 
                 style={{ animationDelay: "1000ms" }}
-                className="animate-fade-scale lg:col-span-5 p-6 rounded-3xl bg-white border border-slate-200/70 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300"
+                className="animate-fade-scale lg:col-span-5 p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200/70 dark:border-[#282A3D]/80 shadow-xs flex flex-col justify-between hover:shadow-lg transition-all duration-300"
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900">Recent Customer Feedbacks</h3>
-                    <p className="text-[11px] text-slate-400">Live submissions from mobile app</p>
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Recent Customer Feedbacks</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300">Live submissions from mobile app</p>
                   </div>
                   <Link href="/feedbacks" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 hover:translate-x-0.5 transition-transform">
                     <span>View all ({totalFeedbacks})</span>
@@ -779,26 +800,26 @@ export default function AnalyticsDashboard() {
                     No customer feedbacks submitted yet.
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-slate-100 dark:divide-[#282A3D]">
                     {feedbacks.slice(0, 4).map((f) => (
-                      <div key={f.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 rounded-xl px-2 -mx-2 transition-colors">
+                      <div key={f.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/50 rounded-xl px-2 -mx-2 transition-colors">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                             {(f.userName || "U")[0].toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 truncate">{f.userName || "Reminda User"}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{f.category || "General"}</p>
+                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{f.userName || "Reminda User"}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-300 truncate">{f.category || "General"}</p>
                           </div>
                         </div>
 
                         <div className="text-right shrink-0">
                           <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold transition-transform hover:scale-105 ${
                             f.status === "resolved" 
-                              ? "bg-emerald-50 text-emerald-600"
+                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
                               : f.status === "in-progress"
                               ? "bg-blue-50 text-blue-600"
-                              : "bg-amber-50 text-amber-600"
+                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
                           }`}>
                             {(f.status || "pending").toUpperCase()}
                           </span>
