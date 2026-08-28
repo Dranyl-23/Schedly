@@ -21,7 +21,7 @@ interface AuthContextType {
 // Authorized Admin Emails
 const AUTHORIZED_ADMINS = [
   "alfielynard23@gmail.com",
-  "dranyl23@gmail.com"
+  "Alfielynardrosalita@gmail.com"
 ];
 
 const AuthContext = createContext<AuthContextType>({

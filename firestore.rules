@@ -5,12 +5,15 @@ service cloud.firestore {
     // Helper to check if caller is an authorized administrator
     function isAdmin() {
       return request.auth != null && (
-        request.auth.token.email == 'alfielynard23@gmail.com' ||
-        request.auth.token.email == 'alfielynardrosalita@gmail.com'
+        request.auth.token.email in [
+          'alfielynard23@gmail.com',
+          'alfielynardrosalita@gmail.com',
+          'dranyl23@gmail.com'
+        ]
       );
     }
 
-    // User root document (Profile, Preferences & Settings)
+    // User root document (Profile, Preferences & Telemetry)
     match /users/{userId} {
       allow create, update: if true;
       allow read, delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
@@ -34,34 +37,34 @@ service cloud.firestore {
       }
     }
 
-    // In-App User Feedback collection (allow users/guests to submit feedback)
+    // In-App User Feedback collection (Public write, Admin read/update/delete)
     match /user_feedback/{feedbackId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isAdmin();
     }
 
-    // Anonymous AI Training Telemetry Dataset collection
+    // Anonymous AI Training Telemetry Dataset collection (Public write, Admin read/update/delete)
     match /ai_training_samples/{sampleId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow read, update, delete: if isAdmin();
     }
 
-    // Dynamic Institutions & Workplace Directory (Public Read, Admin Write)
+    // Dynamic Institutions & Workplace Directory (Public Read, Admin Write Only)
     match /institutions/{institutionId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Remote Broadcast Announcements & In-App Banners (Public Read, Admin Write)
+    // Remote Broadcast Announcements & In-App Banners (Public Read, Admin Write Only)
     match /announcements/{announcementId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // Remote App Config & Feature Flags (Public Read, Admin Write)
+    // Remote App Config & Feature Flags (Public Read, Admin Write Only)
     match /system_config/{configId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }
