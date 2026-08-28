@@ -18,6 +18,33 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+// User-friendly custom error messages for Google Authentication
+function formatAuthError(err: any): string | null {
+  if (!err) return null;
+  const code = err.code || "";
+  const msg = err.message || "";
+
+  if (code === "auth/popup-closed-by-user" || msg.includes("popup-closed-by-user")) {
+    return "Sign-in cancelled. Click the button below whenever you're ready to proceed.";
+  }
+  if (code === "auth/popup-blocked" || msg.includes("popup-blocked")) {
+    return "Google login popup was blocked by your browser. Please allow popups for this site.";
+  }
+  if (code === "auth/network-request-failed" || msg.includes("network-request-failed")) {
+    return "Network connection issue. Please check your internet and try again.";
+  }
+  if (code === "auth/cancelled-popup-request" || msg.includes("cancelled-popup-request")) {
+    return null;
+  }
+  if (code === "auth/user-disabled" || msg.includes("user-disabled")) {
+    return "This administrator account has been disabled. Please contact system support.";
+  }
+  if (msg.includes("Access denied")) {
+    return msg;
+  }
+  return "Unable to complete Google sign-in. Please try again.";
+}
+
 // Authorized Admin Emails
 const AUTHORIZED_ADMINS = [
   "alfielynard23@gmail.com",
@@ -73,7 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("Google sign in error:", err);
-      setError(err.message || "Failed to sign in with Google.");
+      const friendly = formatAuthError(err);
+      if (friendly) setError(friendly);
     } finally {
       setLoading(false);
     }

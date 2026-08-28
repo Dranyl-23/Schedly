@@ -41,11 +41,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          {/* Error notice if any */}
+          {/* Error notice if any (Custom Friendly Alert) */}
           {error && (
-            <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200/70 text-red-600 text-xs font-semibold flex items-center gap-2 text-left">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+            <div className="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-start gap-2.5 text-left animate-in fade-in zoom-in-95 duration-200 shadow-xs">
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <span className="leading-snug">{error}</span>
             </div>
           )}
 
