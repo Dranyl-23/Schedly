@@ -39,12 +39,21 @@ export default function DatasetLabPage() {
   const itemsPerPage = 8;
 
   useEffect(() => {
-    const q = query(collection(db, "ai_training_samples"), orderBy("timestamp", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
+    // Index-free direct collection listener with robust client-side sort
+    const colRef = collection(db, "ai_training_samples");
+    const unsub = onSnapshot(colRef, (snap) => {
       const list: AiTrainingSample[] = [];
       snap.forEach((doc) => {
         list.push({ id: doc.id, ...doc.data() } as AiTrainingSample);
       });
+
+      // Sort newest first
+      list.sort((a, b) => {
+        const tA = (a.timestamp as any)?.toMillis ? (a.timestamp as any).toMillis() : (a.createdAtIso ? new Date(a.createdAtIso).getTime() : 0);
+        const tB = (b.timestamp as any)?.toMillis ? (b.timestamp as any).toMillis() : (b.createdAtIso ? new Date(b.createdAtIso).getTime() : 0);
+        return tB - tA;
+      });
+
       setSamples(list);
       setIsLoading(false);
     }, (err: any) => {
@@ -166,7 +175,7 @@ export default function DatasetLabPage() {
         {/* Top Header Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-300 dark:text-slate-400 font-semibold">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
               Ground-Truth Dataset Manager. Review OCR telemetry, purge blurred photos, and annotate schedule boundaries before model fine-tuning.
             </p>
           </div>
@@ -174,7 +183,7 @@ export default function DatasetLabPage() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => exportJSON(true)}
-              className="px-4 py-2.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] text-slate-800 dark:text-slate-200 dark:text-slate-200 hover:bg-slate-50 dark:bg-[#25273A]/60 font-bold text-xs shadow-xs transition-colors flex items-center gap-2"
+              className="px-4 py-2.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#25273A]/60 font-bold text-xs shadow-xs transition-colors flex items-center gap-2"
             >
               <Code className="w-4 h-4 text-blue-600" />
               Export Clean JSON
@@ -191,7 +200,7 @@ export default function DatasetLabPage() {
 
         {/* Metric Cards Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex items-center justify-between">
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-slate-500 dark:text-slate-300 dark:text-slate-400 uppercase tracking-wider">Total Scans</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white dark:text-white mt-1">{samples.length}</p>
@@ -201,7 +210,7 @@ export default function DatasetLabPage() {
             </div>
           </div>
 
-          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex items-center justify-between">
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Clean & High Quality</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white dark:text-white mt-1">{cleanCount}</p>
@@ -211,17 +220,17 @@ export default function DatasetLabPage() {
             </div>
           </div>
 
-          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex items-center justify-between">
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs flex items-center justify-between">
             <div>
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-300 dark:text-slate-400 uppercase tracking-wider">Unreviewed</span>
-              <p className="text-2xl font-black text-slate-900 dark:text-white dark:text-white mt-1">{unreviewedCount}</p>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Unreviewed</span>
+              <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">{unreviewedCount}</p>
             </div>
             <div className="p-3 rounded-2xl bg-slate-100 dark:bg-[#25273A] text-slate-600 dark:text-slate-400 font-bold">
               <Code className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex items-center justify-between">
+          <div className="p-5 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs flex items-center justify-between">
             <div>
               <span className="text-xs font-bold text-rose-500 uppercase tracking-wider">Flagged / Blurred</span>
               <p className="text-2xl font-black text-slate-900 dark:text-white dark:text-white mt-1">{flaggedCount}</p>
