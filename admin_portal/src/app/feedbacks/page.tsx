@@ -19,18 +19,13 @@ import { SkeletonCardGrid } from "@/components/Skeleton";
 import { 
   MessageSquare, 
   Search, 
-  Star, 
-  Mail, 
-  CheckCircle2, 
-  Clock, 
   Trash2, 
+  Mail, 
   Send, 
-  Sparkles, 
-  AlertCircle, 
-  Copy, 
-  Check, 
+  CheckCircle2, 
   X,
-  RefreshCw,
+  Copy,
+  Check,
   ExternalLink
 } from "lucide-react";
 

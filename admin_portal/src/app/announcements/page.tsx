@@ -186,7 +186,7 @@ export default function AnnouncementsPage() {
           <div>
             <p className="text-xs text-slate-500 font-semibold flex items-center gap-2">
               <Radio className="w-4 h-4 text-emerald-500 animate-pulse" />
-              <span>Realtime In-App Banner Broadcaster. Any active notices appear immediately at the top of users' Home screens.</span>
+              <span>Realtime In-App Banner Broadcaster. Any active notices appear immediately at the top of users&apos; Home screens.</span>
             </p>
           </div>
 

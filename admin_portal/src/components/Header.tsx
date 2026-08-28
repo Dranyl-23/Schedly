@@ -1,12 +1,12 @@
 "use client";
 
-import { Calendar, Sun, Moon, RefreshCw, LogOut } from "lucide-react";
+import { Calendar, Sun, Moon, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
 
 export function Header({ title = "Analytics", onRefresh }: { title?: string; onRefresh?: () => void }) {
   const currentDateStr = `${format(new Date(), "dd.MM.yyyy")} - Today`;
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header className="px-8 pt-8 pb-4 flex items-center justify-between">

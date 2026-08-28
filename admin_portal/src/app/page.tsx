@@ -5,7 +5,7 @@ import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestor
 import { db } from "@/lib/firebase";
 import { UserFeedback, AiTrainingSample, UserAccount } from "@/lib/types";
 import { Header } from "@/components/Header";
-import { SkeletonMetricCards, SkeletonTable } from "@/components/Skeleton";
+import { SkeletonMetricCards } from "@/components/Skeleton";
 import { 
   FileText, 
   CheckSquare, 

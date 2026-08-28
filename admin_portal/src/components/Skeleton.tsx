@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Loader2 } from "lucide-react";
 
 // 1. Single Shimmer Bar
 export function Skeleton({ className = "" }: { className?: string }) {
@@ -31,7 +30,7 @@ export function LoadingSpinner({
 }
 
 // 3. Skeleton Table for Users & List views
-export function SkeletonTable({ rows = 5, cols = 5 }: { rows?: number; cols?: number }) {
+export function SkeletonTable({ rows = 5 }: { rows?: number }) {
   return (
     <div className="rounded-3xl bg-white border border-slate-200/70 shadow-xs overflow-hidden">
       <div className="p-4 bg-slate-50/80 border-b border-slate-200/70 flex items-center justify-between">

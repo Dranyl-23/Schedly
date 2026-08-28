@@ -10,6 +10,14 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Reminda Analytics — Executive Command Center",
   description: "Ultra-clean real-time executive dashboard for Reminda / Schedly",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico" }
+    ],
+    shortcut: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -19,6 +27,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/icon.png" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+      </head>
       <body className={`${inter.variable} bg-[#F8FAFC] text-slate-900 antialiased min-h-screen selection:bg-blue-100 selection:text-blue-900`}>
         <AuthProvider>
           <AuthGuard>

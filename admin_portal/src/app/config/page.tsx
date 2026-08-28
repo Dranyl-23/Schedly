@@ -39,7 +39,7 @@ export default function ConfigPage() {
     const docRef = doc(db, "system_config", "app_control");
     const unsub = onSnapshot(docRef, (snap) => {
       if (snap.exists()) {
-        setConfig({ ...config, ...snap.data() } as SystemAppConfig);
+        setConfig((prev) => ({ ...prev, ...snap.data() } as SystemAppConfig));
       }
       setIsLoading(false);
     }, (err: any) => {
