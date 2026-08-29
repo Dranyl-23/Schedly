@@ -101,6 +101,14 @@ export default function FeedbacksPage() {
 
       setFeedbacks(list);
       setIsLoading(false);
+
+      if (list.length > 0) {
+        fetch("/api/mongodb/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collectionName: "customer_feedbacks", documents: list })
+        }).catch(() => {});
+      }
     }, (err: any) => {
       console.warn("Feedback snapshot notice:", err.message);
       setIsLoading(false);

@@ -56,6 +56,14 @@ export default function DatasetLabPage() {
 
       setSamples(list);
       setIsLoading(false);
+
+      if (list.length > 0) {
+        fetch("/api/mongodb/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collectionName: "ai_training_datasets", documents: list })
+        }).catch(() => {});
+      }
     }, (err: any) => {
       console.warn("Dataset snapshot notice:", err.message);
       setIsLoading(false);
