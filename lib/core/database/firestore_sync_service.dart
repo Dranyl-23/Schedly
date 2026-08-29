@@ -50,10 +50,31 @@ class FirestoreSyncService {
     });
   }
 
-  /// Pull all cloud data and bidirectional merge with local Hive database
+  /// Pull all cloud data and bidirectional merge with local Hive database.
+  ///
+  /// BUG FIX (Critical #1): `clearAll()` is now only called when the cloud
+  /// actually has data. Previously it was called unconditionally, wiping ALL
+  /// local schedules whenever the cloud returned 0 results (e.g. new user,
+  /// network glitch, or empty collection after login).
+  ///
+  /// BUG FIX (Critical #2): A `_isSyncing` guard prevents `UserSyncService`
+  /// and this method from running concurrently during login, which could cause
+  /// a race where local data is deleted while it is still being uploaded.
+  bool _isSyncing = false;
+
   Future<void> pullAndSyncAll({VoidCallback? onDataChanged}) async {
+    // Race condition guard — only one sync can run at a time
+    if (_isSyncing) {
+      debugPrint('FirestoreSyncService: Sync already in progress, skipping duplicate call.');
+      return;
+    }
+    _isSyncing = true;
+
     final uid = _currentUserId;
-    if (uid == null) return;
+    if (uid == null) {
+      _isSyncing = false;
+      return;
+    }
 
     try {
       // 0. Ensure user root document exists so it shows visibly in Firestore Console
@@ -83,12 +104,16 @@ class FirestoreSyncService {
           }
         }
 
-        // Replace local cache with authenticated user's cloud schedules
-        await _scheduleRepo.clearAll();
+        // ✅ FIXED: Only clear local data when the cloud actually has schedules.
+        // If cloudEntries is empty (new account, network issue, etc.) we keep
+        // whatever the user already has locally — no data loss.
         if (cloudEntries.isNotEmpty) {
+          await _scheduleRepo.clearAll();
           await _scheduleRepo.saveBatch(cloudEntries);
+          hasChanges = true;
+        } else {
+          debugPrint('FirestoreSyncService: Cloud returned 0 schedules — keeping local data intact.');
         }
-        hasChanges = true;
       }
 
       // 2. Sync Profiles
@@ -131,6 +156,9 @@ class FirestoreSyncService {
       }
     } catch (e) {
       debugPrint('FirestoreSyncService: Handled error/timeout during pullAndSyncAll: $e');
+    } finally {
+      // Always release the sync lock so future syncs can proceed
+      _isSyncing = false;
     }
   }
 

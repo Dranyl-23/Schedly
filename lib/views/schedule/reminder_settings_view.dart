@@ -55,10 +55,13 @@ class _ReminderSettingsViewState extends ConsumerState<ReminderSettingsView> {
     await ref.read(scheduleListProvider.notifier).updateSchedule(updated);
 
     if (mounted) {
-      Navigator.pop(context);
+      // BUG FIX (Critical #5): Show SnackBar BEFORE Navigator.pop().
+      // Calling pop() deactivates the context, so ScaffoldMessenger.of(context)
+      // after a pop() crashes with "Looking up a deactivated widget's ancestor".
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Reminder preferences updated!')),
       );
+      Navigator.pop(context);
     }
   }
 

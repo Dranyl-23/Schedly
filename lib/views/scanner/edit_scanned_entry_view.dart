@@ -29,6 +29,7 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
   late String _startTime;
   late String _endTime;
   late int _selectedReminderLead;
+  late bool _spansNextDay;
 
   final List<Map<String, dynamic>> _weekdays = [
     {'day': 1, 'name': 'Monday'},
@@ -68,6 +69,7 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
     _startTime = widget.entry.startTime;
     _endTime = widget.entry.endTime;
     _selectedReminderLead = widget.entry.reminders.isNotEmpty ? widget.entry.reminders.first : 15;
+    _spansNextDay = widget.entry.spansNextDay || TimeUtils.checkSpansOvernight(_startTime, _endTime);
   }
 
   @override
@@ -147,28 +149,26 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
       return;
     }
 
-    // Fix #9: reject impossible time range for non-overnight shifts
-    final spansNextDay = TimeUtils.checkSpansOvernight(_startTime, _endTime);
-    if (!spansNextDay) {
-      final startParts = _startTime.split(':');
-      final endParts   = _endTime.split(':');
-      final startMins  = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
-      final endMins    = int.parse(endParts[0])   * 60 + int.parse(endParts[1]);
-      if (endMins <= startMins) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'End time (${TimeUtils.formatTo12Hour(_endTime)}) must be after '
-              'start time (${TimeUtils.formatTo12Hour(_startTime)}), '
-              'or enable "Crosses midnight".',
-            ),
-            backgroundColor: const Color(0xFFDC2626),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
+    // Fix: check time range against explicit overnight toggle state
+    final startParts = _startTime.split(':');
+    final endParts   = _endTime.split(':');
+    final startMins  = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+    final endMins    = int.parse(endParts[0])   * 60 + int.parse(endParts[1]);
+
+    if (!_spansNextDay && endMins <= startMins) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'End time (${TimeUtils.formatTo12Hour(_endTime)}) must be after '
+            'start time (${TimeUtils.formatTo12Hour(_startTime)}), '
+            'or toggle "Crosses midnight / Overnight shift".',
           ),
-        );
-        return;
-      }
+          backgroundColor: const Color(0xFFDC2626),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
     }
 
     final inCharge = _inChargeController.text.trim();
@@ -189,7 +189,7 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
       daysOfWeek: _selectedDays,
       startTime: _startTime,
       endTime: _endTime,
-      spansNextDay: spansNextDay,
+      spansNextDay: _spansNextDay || (endMins < startMins),
       location: _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null,
       notes: finalNotes,
       reminders: [_selectedReminderLead],
@@ -599,6 +599,58 @@ class _EditScannedEntryViewState extends State<EditScannedEntryView> {
                           ),
                         ),
                       ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Crosses midnight / Overnight Toggle Switch
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceDark : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.nightlight_round,
+                                size: 18,
+                                color: _spansNextDay ? const Color(0xFF8B5CF6) : (isDark ? Colors.white54 : const Color(0xFF94A3B8)),
+                              ),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Crosses midnight / Overnight',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Shift or class ends on the next calendar day',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Switch.adaptive(
+                            value: _spansNextDay,
+                            activeThumbColor: const Color(0xFF8B5CF6),
+                            onChanged: (val) => setState(() => _spansNextDay = val),
+                          ),
+                        ],
+                      ),
                     ),
 
                     const SizedBox(height: 18),

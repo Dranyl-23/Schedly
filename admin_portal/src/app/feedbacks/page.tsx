@@ -23,13 +23,14 @@ function formatFeedbackDate(timestamp: any, createdAtIso?: string): string {
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UserFeedback, UserAccount } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { CustomDropdown } from "@/components/CustomDropdown";
 import { SkeletonCardGrid } from "@/components/Skeleton";
+import { downloadJsonFile, downloadCsvFile } from "@/lib/exportUtils";
 import { 
   MessageSquare, 
   Search, 
@@ -41,11 +42,19 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Star
+  Star,
+  CheckSquare,
+  Square,
+  Download,
+  CheckCheck,
+  Clock,
+  Layers
 } from "lucide-react";
 
 export default function FeedbacksPage() {
   const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState<"all" | "pending" | "in-progress" | "resolved">("all");
@@ -177,6 +186,85 @@ export default function FeedbacksPage() {
     setReplyText("");
   };
 
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === paginatedFeedbacks.length && paginatedFeedbacks.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedFeedbacks.map((f) => f.id)));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBatchStatus = async (newStatus: "pending" | "in-progress" | "resolved") => {
+    if (selectedIds.size === 0) return;
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        batch.update(doc(db, "user_feedback", id), { status: newStatus });
+      });
+      await batch.commit();
+      showToast(`Updated ${selectedIds.size} feedbacks to "${newStatus.toUpperCase()}".`);
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      showToast("Batch status update failed: " + err.message);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        batch.delete(doc(db, "user_feedback", id));
+      });
+      await batch.commit();
+      showToast(`Deleted ${selectedIds.size} feedback messages.`);
+      setSelectedIds(new Set());
+      setIsBatchDeleting(false);
+    } catch (err: any) {
+      showToast("Batch delete failed: " + err.message);
+    }
+  };
+
+  const handleBatchExportJson = () => {
+    const targets = feedbacks.filter((f) => selectedIds.has(f.id));
+    if (targets.length === 0) return;
+    downloadJsonFile(`reminda_feedbacks_${new Date().toISOString().slice(0, 10)}.json`, targets);
+    showToast(`Exported ${targets.length} feedback records as JSON.`);
+  };
+
+  const handleBatchExportCsv = () => {
+    const targets = feedbacks.filter((f) => selectedIds.has(f.id));
+    if (targets.length === 0) return;
+    const headers = ["ID", "User Name", "Contact Email", "Rating", "Category", "Message", "Status", "Platform", "App Version", "Date"];
+    const rows = targets.map((f) => [
+      f.id,
+      f.userName || "User",
+      f.contactEmail || "",
+      f.rating || 5,
+      f.category || "General",
+      f.comment || f.message || "",
+      f.status || "pending",
+      f.platform || "Android",
+      f.appVersion || "1.0.0",
+      f.createdAtIso || ""
+    ]);
+    downloadCsvFile(`reminda_feedbacks_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    showToast(`Exported ${targets.length} feedback records as CSV.`);
+  };
+
   const handleCopyEmail = (email: string) => {
     navigator.clipboard.writeText(email);
     setCopied(true);
@@ -217,11 +305,82 @@ export default function FeedbacksPage() {
           onCancel={() => setDeleteTargetId(null)}
         />
 
+        {/* Batch Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isBatchDeleting}
+          title="Delete Selected Feedback Messages?"
+          message={`Are you sure you want to permanently delete ${selectedIds.size} feedback messages? This action cannot be undone.`}
+          confirmText={`Yes, Delete ${selectedIds.size} Messages`}
+          cancelText="Cancel"
+          onConfirm={handleBatchDelete}
+          onCancel={() => setIsBatchDeleting(false)}
+        />
+
         {/* Toast Notification */}
         {toastMessage && (
           <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-xl flex items-center gap-2.5 animate-bounce">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* Sticky Floating Batch Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900/95 dark:bg-[#1E2030]/95 backdrop-blur-md text-white shadow-2xl border border-slate-700/80 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5">
+            <div className="flex items-center gap-2 pr-3 border-r border-slate-700">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+              <span className="text-xs font-bold whitespace-nowrap">{selectedIds.size} Selected</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => handleBatchStatus("resolved")}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>Mark Resolved</span>
+              </button>
+
+              <button
+                onClick={() => handleBatchStatus("in-progress")}
+                className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>In Progress</span>
+              </button>
+
+              <button
+                onClick={handleBatchExportCsv}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+
+              <button
+                onClick={handleBatchExportJson}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>JSON</span>
+              </button>
+
+              <button
+                onClick={() => setIsBatchDeleting(true)}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleDeselectAll}
+              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-2"
+              title="Clear selection"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -312,20 +471,56 @@ export default function FeedbacksPage() {
             <p>No feedback submissions found matching your filter.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
+            {/* Select All on Page Toolbar */}
+            <div className="flex items-center justify-between px-2 py-1">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+              >
+                {selectedIds.size === paginatedFeedbacks.length && paginatedFeedbacks.length > 0 ? (
+                  <CheckSquare className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Square className="w-4 h-4 text-slate-400" />
+                )}
+                <span>Select All on Page ({paginatedFeedbacks.length})</span>
+              </button>
+
+              {selectedIds.size > 0 && (
+                <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                  {selectedIds.size} feedback{selectedIds.size > 1 ? "s" : ""} selected
+                </span>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {paginatedFeedbacks.map((f) => {
                 const currentStatus = f.status || "pending";
+                const isSelected = selectedIds.has(f.id);
 
                 return (
                   <div
                     key={f.id}
-                    className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    onClick={() => handleToggleSelect(f.id)}
+                    className={`p-6 rounded-3xl border transition-all flex flex-col justify-between cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-50/40 dark:bg-[#20253B] border-blue-400/80 shadow-md ring-2 ring-blue-500/20"
+                        : "bg-white dark:bg-[#1C1D2B] border-slate-200 dark:border-[#282A3D]/70 shadow-xs hover:shadow-md hover:border-slate-300"
+                    }`}
                   >
                     <div>
                       {/* User Header & Star Rating */}
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-3">
+                          {/* Selection Checkbox */}
+                          <div className="shrink-0">
+                            {isSelected ? (
+                              <CheckSquare className="w-5 h-5 text-blue-600 fill-blue-50" />
+                            ) : (
+                              <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />
+                            )}
+                          </div>
+
                           {(() => {
                             const photo = f.userPhotoUrl || f.photoUrl || userPhotos[f.userId] || (f.contactEmail ? userPhotos[f.contactEmail.toLowerCase()] : null);
                             return photo ? (
@@ -380,7 +575,10 @@ export default function FeedbacksPage() {
                     </div>
 
                     {/* Footer Actions & Status Select */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-[#282A3D] flex items-center justify-between gap-2">
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      className="pt-3 border-t border-slate-100 dark:border-[#282A3D] flex items-center justify-between gap-2"
+                    >
                       <div className="flex-1 max-w-32.5">
                         <CustomDropdown
                           value={currentStatus}
@@ -398,14 +596,18 @@ export default function FeedbacksPage() {
                         {f.contactEmail && (
                           <>
                             <button
-                              onClick={() => handleCopyEmail(f.contactEmail!)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyEmail(f.contactEmail!);
+                              }}
                               className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-[#25273A] transition-colors"
                               title="Copy Email"
                             >
                               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                             </button>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setReplyModalFeedback(f);
                                 setReplyText(`Hi ${f.userName || "there"},
 
@@ -423,7 +625,10 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
                         )}
 
                         <button
-                          onClick={() => setDeleteTargetId(f.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTargetId(f.id);
+                          }}
                           className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                           title="Delete feedback"
                         >

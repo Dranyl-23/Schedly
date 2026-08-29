@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 enum NotificationType {
   reminder,
@@ -100,15 +100,27 @@ class AppNotification {
   }
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
+    DateTime parsedTimestamp;
+    try {
+      final rawTimestamp = json['timestamp'];
+      if (rawTimestamp is String) {
+        parsedTimestamp = DateTime.tryParse(rawTimestamp) ?? DateTime.now();
+      } else {
+        parsedTimestamp = DateTime.now();
+      }
+    } catch (_) {
+      parsedTimestamp = DateTime.now();
+    }
+
     return AppNotification(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      body: json['body'] as String,
+      id: json['id']?.toString() ?? 'notif_${DateTime.now().millisecondsSinceEpoch}',
+      title: json['title']?.toString() ?? 'Notification',
+      body: json['body']?.toString() ?? '',
       type: NotificationType.values.firstWhere(
         (t) => t.name == json['type'],
         orElse: () => NotificationType.reminder,
       ),
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      timestamp: parsedTimestamp,
       isRead: json['isRead'] as bool? ?? false,
       relatedScheduleId: json['relatedScheduleId'] as String?,
     );

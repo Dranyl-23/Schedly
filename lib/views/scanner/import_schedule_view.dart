@@ -52,11 +52,18 @@ class _ImportScheduleViewState extends State<ImportScheduleView> {
         final pickedFile = result.files.first;
         final path = pickedFile.path;
         if (path != null && mounted) {
-          final isPdf = pickedFile.extension?.toLowerCase() == 'pdf';
+          final ext = pickedFile.extension?.toLowerCase() ?? 'jpg';
+          final mimeType = switch (ext) {
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'heic' => 'image/heic',
+            _ => 'image/jpeg',
+          };
           final xFile = XFile(
             path,
             name: pickedFile.name,
-            mimeType: isPdf ? 'application/pdf' : 'image/jpeg',
+            mimeType: mimeType,
           );
 
           Navigator.push(

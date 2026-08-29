@@ -101,11 +101,12 @@ class AddScheduleModalDialog extends StatelessWidget {
               borderColor: const Color(0xFF2563EB),
               isDark: isDark,
               onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ScannerLandingView()),
-                );
+                // BUG FIX (Critical #6): Cache the Navigator BEFORE calling
+                // pop(). After pop() the dialog's context is deactivated, so
+                // Navigator.push(context, ...) with the same context crashes.
+                final nav = Navigator.of(context);
+                nav.pop();
+                nav.push(MaterialPageRoute(builder: (_) => const ScannerLandingView()));
               },
             ),
 
@@ -123,11 +124,9 @@ class AddScheduleModalDialog extends StatelessWidget {
               borderColor: isDark ? AppColors.borderDark : const Color(0xFFE2E8F0),
               isDark: isDark,
               onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddEditScheduleView()),
-                );
+                final nav = Navigator.of(context);
+                nav.pop();
+                nav.push(MaterialPageRoute(builder: (_) => const AddEditScheduleView()));
               },
             ),
           ],

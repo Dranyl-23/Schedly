@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/time_utils.dart';
@@ -544,8 +544,17 @@ class _WeeklyTimetableGridState extends State<WeeklyTimetableGrid> {
 
         if (startOffsetMinutes + durationMinutes < 0) continue;
 
+        // BUG FIX (High #17): Cap each block at the grid boundary.
+        // Previously overnight shifts generated a Positioned block that extended
+        // past _endHour, causing visual overflow. Now we render the block
+        // capped at the grid bottom so it doesn't overflow the UI.
+        final gridTotalMinutes = (_endHour - _startHour) * 60;
+        final cappedDuration = (startOffsetMinutes + durationMinutes > gridTotalMinutes)
+            ? (gridTotalMinutes - startOffsetMinutes).clamp(0, gridTotalMinutes)
+            : durationMinutes;
+
         final top = (startOffsetMinutes / 60.0) * _hourHeight;
-        final height = (durationMinutes / 60.0) * _hourHeight;
+        final height = (cappedDuration / 60.0) * _hourHeight;
         final left = dayIndex * _dayWidth;
 
         final palette = TimetableTheme.forTitle(entry.title, isDark);

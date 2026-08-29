@@ -163,7 +163,21 @@ Critical Extraction Rules:
       throw Exception('Multi-AI extraction could not process this image. Details: $lastError');
     }
 
-    return _decodeScheduleJson(rawJson);
+    try {
+      return _decodeScheduleJson(rawJson);
+    } catch (decodeErr) {
+      debugPrint('ScheduleParserService: JSON decode failed: $decodeErr. Falling back to On-Device Offline Engine...');
+      try {
+        final offlineEntries = await OfflineScheduleParser.parseFromBytes(imageBytes);
+        if (offlineEntries.isNotEmpty) {
+          debugPrint('ScheduleParserService: Successfully extracted ${offlineEntries.length} schedules via On-Device Offline Engine after decode error!');
+          return offlineEntries;
+        }
+      } catch (offlineErr) {
+        throw Exception('Cloud AI returned malformed response and offline parser failed. Decode error: $decodeErr | Offline error: $offlineErr');
+      }
+      throw Exception('Failed to parse schedule JSON: $decodeErr');
+    }
   }
 
   /// Extracts schedule using Groq LPU Vision (Llama-3.2-11b-vision-preview / 90b)

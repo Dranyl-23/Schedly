@@ -79,9 +79,19 @@ class _UpcomingBannerState extends ConsumerState<UpcomingBanner> {
       var startDateTime = DateTime(now.year, now.month, now.day, startHour, startMinute);
       var endDateTime = DateTime(now.year, now.month, now.day, endHour, endMinute);
 
-      // Handle overnight shift
+      // Handle overnight shift — end is on the next calendar day
       if (endDateTime.isBefore(startDateTime)) {
         endDateTime = endDateTime.add(const Duration(days: 1));
+      }
+
+      // BUG FIX (High #14): For post-midnight ongoing shifts, startDateTime
+      // was built using today's date, placing it in the future (e.g. 10 PM today
+      // when it's currently 2 AM). This caused elapsed/progress to go negative.
+      // If isOngoing is true but startDateTime is in the future, the shift
+      // actually started yesterday — shift both reference points back one day.
+      if (isOngoing && startDateTime.isAfter(now)) {
+        startDateTime = startDateTime.subtract(const Duration(days: 1));
+        endDateTime = endDateTime.subtract(const Duration(days: 1));
       }
 
       if (isOngoing) {

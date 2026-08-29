@@ -169,6 +169,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           debugPrint('refreshFromCloud error: $e');
         }
       }
+      if (!mounted) return;
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
@@ -220,6 +221,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           debugPrint('refreshFromCloud error: $e');
         }
       }
+      if (!mounted) return;
       _navigateToHome();
     } else {
       final error = ref.read(authProvider).errorMessage;
@@ -387,7 +389,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         );
       },
-    );
+    ).whenComplete(() => nameCtrl.dispose());
   }
 
   @override

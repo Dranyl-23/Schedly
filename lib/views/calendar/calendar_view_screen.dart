@@ -41,7 +41,16 @@ class _CalendarViewScreenState extends ConsumerState<CalendarViewScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final allSchedules = ref.watch(scheduleListProvider);
+
+    // BUG FIX (High #15): The calendar was watching the raw scheduleListProvider
+    // which returns ALL schedules across ALL profiles, mixing them together.
+    // schedulesForSelectedDateProvider already applies the active profile filter
+    // for the selected day. For the overall list passed to the timetable and
+    // monthly calendar event-marker logic, we filter to only active entries
+    // (which respects isActive set per-profile by the profile system).
+    final allSchedules = ref.watch(scheduleListProvider)
+        .where((e) => e.isActive)
+        .toList();
 
     final selectedDate = _selectedDay ?? _focusedDay;
     final dayEvents = _getEventsForDay(selectedDate, allSchedules);

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { AiTrainingSample } from "@/lib/types";
 import { Header } from "@/components/Header";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { SkeletonCardGrid } from "@/components/Skeleton";
+import { downloadJsonFile, downloadCsvFile } from "@/lib/exportUtils";
 import { 
   Database, 
   Search, 
@@ -17,11 +18,18 @@ import {
   Sparkles, 
   Code,
   Edit3,
-  X
+  X,
+  CheckSquare,
+  Square,
+  Flag,
+  Layers,
+  CheckCheck
 } from "lucide-react";
 
 export default function DatasetLabPage() {
   const [samples, setSamples] = useState<AiTrainingSample[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedQuality, setSelectedQuality] = useState("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -110,34 +118,109 @@ export default function DatasetLabPage() {
     }
   };
 
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === paginatedSamples.length && paginatedSamples.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedSamples.map((s) => s.id)));
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBatchQuality = async (newQuality: "clean" | "flagged" | "unreviewed") => {
+    if (selectedIds.size === 0) return;
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        batch.update(doc(db, "ai_training_samples", id), {
+          qualityStatus: newQuality,
+          annotatedAt: new Date().toISOString()
+        });
+      });
+      await batch.commit();
+      showToast(`Updated ${selectedIds.size} samples to "${newQuality.toUpperCase()}".`);
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      showToast("Batch update failed: " + err.message);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        batch.delete(doc(db, "ai_training_samples", id));
+      });
+      await batch.commit();
+      showToast(`Purged ${selectedIds.size} training samples.`);
+      setSelectedIds(new Set());
+      setIsBatchDeleting(false);
+    } catch (err: any) {
+      showToast("Batch delete failed: " + err.message);
+    }
+  };
+
+  const handleBatchExportJson = () => {
+    const targets = samples.filter((s) => selectedIds.has(s.id));
+    if (targets.length === 0) return;
+    downloadJsonFile(`reminda_dataset_selected_${new Date().toISOString().slice(0, 10)}.json`, targets);
+    showToast(`Exported ${targets.length} training samples as JSON.`);
+  };
+
+  const handleBatchExportCsv = () => {
+    const targets = samples.filter((s) => selectedIds.has(s.id));
+    if (targets.length === 0) return;
+    const headers = ["ID", "Institution", "Role", "Quality Status", "Classes Count", "Platform", "Raw OCR Snippet", "Date"];
+    const rows = targets.map((s) => [
+      s.id,
+      s.institutionName || "Unknown",
+      s.role || "Student",
+      s.qualityStatus || "unreviewed",
+      s.verifiedEntries ? s.verifiedEntries.length : 0,
+      s.platform || "Android",
+      (s.rawOcrText || "").replace(/\n/g, " ").slice(0, 200),
+      s.createdAtIso || ""
+    ]);
+    downloadCsvFile(`reminda_dataset_selected_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    showToast(`Exported ${targets.length} training samples as CSV.`);
+  };
+
   const exportJSON = (cleanOnly: boolean = false) => {
     const dataToExport = cleanOnly 
       ? samples.filter((s) => s.qualityStatus === "clean")
       : samples;
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
-    const a = document.createElement("a");
-    a.href = dataStr;
-    a.download = `reminda_dataset_${cleanOnly ? "clean" : "full"}_${Date.now()}.json`;
-    a.click();
+    downloadJsonFile(`reminda_dataset_${cleanOnly ? "clean" : "full"}_${Date.now()}.json`, dataToExport);
     showToast(`Exported ${dataToExport.length} samples to JSON!`);
   };
 
   const exportCSV = () => {
     const cleanSamples = samples.filter((s) => s.qualityStatus === "clean");
-    let csv = "id,institutionName,role,platform,qualityStatus,timestamp,rawOcrText,entriesCount\n";
-    
-    cleanSamples.forEach((s) => {
-      const escapedOcr = `"${(s.rawOcrText || "").replace(/"/g, '""').replace(/\n/g, " ")}"`;
-      const count = s.verifiedEntries ? s.verifiedEntries.length : 0;
-      csv += `${s.id},"${s.institutionName || ""}","${s.role || ""}","${s.platform || ""}",${s.qualityStatus || ""},${s.timestamp || ""},${escapedOcr},${count}\n`;
-    });
-
-    const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-    const a = document.createElement("a");
-    a.href = dataStr;
-    a.download = `reminda_dataset_clean_${Date.now()}.csv`;
-    a.click();
+    const headers = ["id", "institutionName", "role", "platform", "qualityStatus", "timestamp", "rawOcrText", "entriesCount"];
+    const rows = cleanSamples.map((s) => [
+      s.id,
+      s.institutionName || "",
+      s.role || "",
+      s.platform || "",
+      s.qualityStatus || "",
+      (s.timestamp as any)?.seconds || "",
+      (s.rawOcrText || "").replace(/\n/g, " "),
+      s.verifiedEntries ? s.verifiedEntries.length : 0
+    ]);
+    downloadCsvFile(`reminda_dataset_clean_${Date.now()}.csv`, headers, rows);
     showToast(`Exported ${cleanSamples.length} clean samples to CSV!`);
   };
 
@@ -172,11 +255,82 @@ export default function DatasetLabPage() {
           onCancel={() => setDeleteTarget(null)}
         />
 
+        {/* Batch Purge Confirmation Modal */}
+        <ConfirmModal
+          isOpen={isBatchDeleting}
+          title="Purge Selected Training Samples?"
+          message={`Are you sure you want to permanently purge ${selectedIds.size} training telemetry samples from the dataset? This action cannot be undone.`}
+          confirmText={`Yes, Purge ${selectedIds.size} Samples`}
+          cancelText="Cancel"
+          onConfirm={handleBatchDelete}
+          onCancel={() => setIsBatchDeleting(false)}
+        />
+
         {/* Toast */}
         {toastMessage && (
           <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-bold shadow-xl flex items-center gap-2.5 animate-bounce">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{toastMessage}</span>
+          </div>
+        )}
+
+        {/* Sticky Floating Batch Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900/95 dark:bg-[#1E2030]/95 backdrop-blur-md text-white shadow-2xl border border-slate-700/80 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5">
+            <div className="flex items-center gap-2 pr-3 border-r border-slate-700">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+              <span className="text-xs font-bold whitespace-nowrap">{selectedIds.size} Selected</span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={() => handleBatchQuality("clean")}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Mark Ground Truth</span>
+              </button>
+
+              <button
+                onClick={() => handleBatchQuality("flagged")}
+                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                <span>Flag Issues</span>
+              </button>
+
+              <button
+                onClick={handleBatchExportCsv}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+
+              <button
+                onClick={handleBatchExportJson}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>JSON</span>
+              </button>
+
+              <button
+                onClick={() => setIsBatchDeleting(true)}
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Purge</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleDeselectAll}
+              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors ml-2"
+              title="Clear selection"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
@@ -308,54 +462,101 @@ export default function DatasetLabPage() {
             <p className="text-slate-400">Telemetry will automatically appear here when mobile users scan schedules with MMA Spatial Parser.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
+            {/* Select All on Page Toolbar */}
+            <div className="flex items-center justify-between px-2 py-1">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors"
+              >
+                {selectedIds.size === paginatedSamples.length && paginatedSamples.length > 0 ? (
+                  <CheckSquare className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Square className="w-4 h-4 text-slate-400" />
+                )}
+                <span>Select All on Page ({paginatedSamples.length})</span>
+              </button>
+
+              {selectedIds.size > 0 && (
+                <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                  {selectedIds.size} sample{selectedIds.size > 1 ? "s" : ""} selected
+                </span>
+              )}
+            </div>
+
             <div className="space-y-4">
-              {paginatedSamples.map((s) => (
-                <div
-                  key={s.id}
-                  className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs hover:shadow-md transition-all space-y-4"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-[#282A3D]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs">
-                        {s.role ? s.role.slice(0, 3).toUpperCase() : "AI"}
+              {paginatedSamples.map((s) => {
+                const isSelected = selectedIds.has(s.id);
+
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => handleToggleSelect(s.id)}
+                    className={`p-6 rounded-3xl border transition-all space-y-4 cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-50/40 dark:bg-[#20253B] border-blue-400/80 shadow-md ring-2 ring-blue-500/20"
+                        : "bg-white dark:bg-[#1C1D2B] border-slate-200 dark:border-[#282A3D]/70 shadow-xs hover:shadow-md hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-[#282A3D]">
+                      <div className="flex items-center gap-3">
+                        {/* Checkbox */}
+                        <div className="shrink-0">
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600 fill-blue-50" />
+                          ) : (
+                            <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />
+                          )}
+                        </div>
+
+                        <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs shrink-0">
+                          {s.role ? s.role.slice(0, 3).toUpperCase() : "AI"}
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{s.institutionName || "Unknown Institution"}</h4>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-300 dark:text-slate-400 font-medium">
+                            Role: {s.role} • Platform: {s.platform || "Android"} • App: {s.appVersion || "v1.0.0"}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm text-slate-900 dark:text-white dark:text-white">{s.institutionName || "Unknown Institution"}</h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-300 dark:text-slate-400 font-medium">
-                          Role: {s.role} • Platform: {s.platform || "Android"} • App: {s.appVersion || "v1.0.0"}
-                        </p>
+
+                      <div 
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2"
+                      >
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          s.qualityStatus === "clean" 
+                            ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60" 
+                            : s.qualityStatus === "flagged"
+                            ? "bg-rose-50 text-rose-600 border border-rose-200/60"
+                            : "bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300"
+                        }`}>
+                          {(s.qualityStatus || "unreviewed").toUpperCase()}
+                        </span>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(s);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-300 dark:text-slate-400" />
+                          <span>Annotate</span>
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: s.id, name: s.institutionName || s.id });
+                          }}
+                          className="p-1.5 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Purge Sample"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        s.qualityStatus === "clean" 
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60" 
-                          : s.qualityStatus === "flagged"
-                          ? "bg-rose-50 text-rose-600 border border-rose-200/60"
-                          : "bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300"
-                      }`}>
-                        {(s.qualityStatus || "unreviewed").toUpperCase()}
-                      </span>
-
-                      <button
-                        onClick={() => openEditModal(s)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-slate-500 dark:text-slate-300 dark:text-slate-400" />
-                        <span>Annotate</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeleteTarget({ id: s.id, name: s.institutionName || s.id })}
-                        className="p-1.5 rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-                        title="Purge Sample"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs">
                     <div className="space-y-1">
@@ -381,8 +582,9 @@ export default function DatasetLabPage() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
 
             {/* Pagination Controls */}
             {totalPages > 1 && (

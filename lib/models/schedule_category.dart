@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 
 enum ScheduleCategory {
@@ -76,22 +76,28 @@ extension ScheduleCategoryExtension on ScheduleCategory {
 
   static ScheduleCategory fromString(String? value) {
     if (value == null) return ScheduleCategory.custom;
-    switch (value.toLowerCase()) {
+    final normalized = value.toLowerCase().replaceAll(RegExp(r'[\s_\-]'), '');
+    switch (normalized) {
       case 'class':
       case 'classschedule':
       case 'school':
       case 'subject':
       case 'course':
+      case 'lecture':
+      case 'lab':
         return ScheduleCategory.classSchedule;
       case 'work':
       case 'workshift':
       case 'shift':
       case 'job':
+      case 'office':
         return ScheduleCategory.workShift;
       case 'duty':
       case 'dutyroster':
       case 'station':
       case 'hospital':
+      case 'clinical':
+      case 'rotation':
         return ScheduleCategory.duty;
       default:
         return ScheduleCategory.custom;

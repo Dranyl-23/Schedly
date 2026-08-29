@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../scanner/review_scanned_schedules_view.dart';
 import 'add_edit_schedule_view.dart';
 
 class ManualEntryChoiceView extends StatelessWidget {
@@ -80,7 +81,9 @@ class ManualEntryChoiceView extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const AddEditScheduleView()),
+                  MaterialPageRoute(
+                    builder: (_) => const ReviewScannedSchedulesView(initialEntries: []),
+                  ),
                 );
               },
             ),

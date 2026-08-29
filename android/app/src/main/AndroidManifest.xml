@@ -42,7 +42,7 @@
             android:value="2" />
 
         <receiver
-            android:exported="false"
+            android:exported="true"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
         <receiver
             android:exported="false"

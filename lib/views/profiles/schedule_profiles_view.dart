@@ -313,8 +313,16 @@ class ScheduleProfilesView extends ConsumerWidget {
                                 isActive: false,
                               );
                               await ref.read(profileListProvider.notifier).addProfile(newProfile);
-                              if (context.mounted) {
+                              // BUG FIX (High #16): Use the DIALOG's context (ctx)
+                              // to close the dialog, and the PARENT's context
+                              // to show the SnackBar. Previously, context.mounted
+                              // (parent) was checked before Navigator.pop(ctx)
+                              // (dialog) — if the parent unmounted during the async
+                              // addProfile call, the dialog would stay open forever.
+                              if (ctx.mounted) {
                                 Navigator.pop(ctx);
+                              }
+                              if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Profile "$name" created successfully!'),
@@ -350,7 +358,7 @@ class ScheduleProfilesView extends ConsumerWidget {
           },
         );
       },
-    );
+    ).whenComplete(() => nameController.dispose());
   }
 
   void _confirmDeleteProfile(BuildContext context, WidgetRef ref, ScheduleProfile profile) {
@@ -510,7 +518,7 @@ class ScheduleProfilesView extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).whenComplete(() => nameController.dispose());
   }
 
   @override

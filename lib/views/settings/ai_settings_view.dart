@@ -46,72 +46,85 @@ class _AiSettingsViewState extends ConsumerState<AiSettingsView> {
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                description,
+        bool obscure = true;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                title,
                 style: TextStyle(
-                  fontSize: 12.5,
-                  color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _keyController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: envDefault.isNotEmpty ? 'Active (.env configured)' : 'Paste API key here',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _keyController,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      hintText: envDefault.isNotEmpty ? 'Active (.env configured)' : 'Paste API key here',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 20,
+                          color: const Color(0xFF64748B),
+                        ),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                  ),
+                  if (envDefault.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Default key is provided in .env',
+                      style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ],
               ),
-              if (envDefault.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Default key is provided in .env',
-                  style: TextStyle(fontSize: 11, color: Colors.green.shade700, fontWeight: FontWeight.w600),
+              actions: [
+                if (envDefault.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      onReset();
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Use Default'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    onSave(_keyController.text.trim());
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save'),
                 ),
               ],
-            ],
-          ),
-          actions: [
-            if (envDefault.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  onReset();
-                  Navigator.pop(ctx);
-                },
-                child: const Text('Use Default'),
-              ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                onSave(_keyController.text.trim());
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -128,77 +141,92 @@ class _AiSettingsViewState extends ConsumerState<AiSettingsView> {
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            'Cloudflare Workers AI',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Configure Cloudflare Account ID and API Token for edge Llama 3.2 Vision.',
+        bool obscure = true;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Cloudflare Workers AI',
                 style: TextStyle(
-                  fontSize: 12.5,
-                  color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
                 ),
               ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _cfAccountController,
-                decoration: InputDecoration(
-                  labelText: 'Account ID',
-                  hintText: AppConfig.cloudflareAccountId.isNotEmpty ? 'Configured in .env' : 'Account ID',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Configure Cloudflare Account ID and API Token for edge Llama 3.2 Vision.',
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _cfAccountController,
+                    decoration: InputDecoration(
+                      labelText: 'Account ID',
+                      hintText: AppConfig.cloudflareAccountId.isNotEmpty ? 'Configured in .env' : 'Account ID',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _cfTokenController,
+                    obscureText: obscure,
+                    decoration: InputDecoration(
+                      labelText: 'API Token',
+                      hintText: AppConfig.cloudflareApiToken.isNotEmpty ? 'Configured in .env' : 'API Token',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          size: 20,
+                          color: const Color(0xFF64748B),
+                        ),
+                        onPressed: () => setDialogState(() => obscure = !obscure),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    ref.read(cloudflareAccountIdProvider.notifier).resetToDefault();
+                    ref.read(cloudflareApiTokenProvider.notifier).resetToDefault();
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('Use Default'),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _cfTokenController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'API Token',
-                  hintText: AppConfig.cloudflareApiToken.isNotEmpty ? 'Configured in .env' : 'API Token',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                ref.read(cloudflareAccountIdProvider.notifier).resetToDefault();
-                ref.read(cloudflareApiTokenProvider.notifier).resetToDefault();
-                Navigator.pop(ctx);
-              },
-              child: const Text('Use Default'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(cloudflareAccountIdProvider.notifier).setKey(_cfAccountController.text.trim());
-                ref.read(cloudflareApiTokenProvider.notifier).setKey(_cfTokenController.text.trim());
-                Navigator.pop(ctx);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save'),
-            ),
-          ],
+                ElevatedButton(
+                  onPressed: () {
+                    final accountId = _cfAccountController.text.trim();
+                    final token = _cfTokenController.text.trim();
+                    ref.read(cloudflareAccountIdProvider.notifier).setKey(accountId);
+                    ref.read(cloudflareApiTokenProvider.notifier).setKey(token);
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

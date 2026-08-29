@@ -95,7 +95,13 @@ class _ScannerLandingViewState extends ConsumerState<ScannerLandingView> {
       if (bytes == null || !mounted) return;
 
       final ext = file.extension?.toLowerCase() ?? 'pdf';
-      final mimeType = ext == 'pdf' ? 'application/pdf' : 'image/jpeg';
+      final mimeType = switch (ext) {
+        'pdf' => 'application/pdf',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'heic' => 'image/heic',
+        _ => 'image/jpeg',
+      };
       final fileObj = file.path != null ? File(file.path!) : null;
 
       Navigator.push(

@@ -8,6 +8,8 @@ import '../core/database/profile_repository.dart';
 import '../core/database/schedule_repository.dart';
 import '../core/database/user_sync_service.dart';
 import '../core/notifications/notification_service.dart';
+import 'profile_provider.dart';
+import 'schedule_provider.dart';
 
 class AuthState {
   final bool isOnboarded;
@@ -68,9 +70,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         ? AppConfig.googleOAuthClientId
         : null,
   );
+  final Ref _ref;
   StreamSubscription<User?>? _authSubscription;
 
-  AuthNotifier() : super(const AuthState()) {
+  AuthNotifier(this._ref) : super(const AuthState()) {
     _init();
   }
 
@@ -376,6 +379,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final notifService = NotificationService();
       await notifService.cancelAllNotifications();
+
+      // Clear in-memory Riverpod provider state so old user's data isn't visible in UI
+      _ref.read(scheduleListProvider.notifier).clearLocalMemory();
+      _ref.read(profileListProvider.notifier).clearLocalMemory();
     } catch (e) {
       // Ignored
     }
@@ -455,5 +462,5 @@ class AuthNotifier extends StateNotifier<AuthState> {
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
+  return AuthNotifier(ref);
 });

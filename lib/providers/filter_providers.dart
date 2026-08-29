@@ -14,6 +14,17 @@ final selectedCategoryFilterProvider = StateProvider<ScheduleCategory?>((ref) {
   return null; // null means "All categories"
 });
 
+/// Helper to parse "HH:mm" or "H:mm" into total minutes from midnight for robust numerical sorting
+int _parseTimeToMinutes(String time) {
+  final parts = time.split(':');
+  if (parts.length >= 2) {
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    return h * 60 + m;
+  }
+  return 0;
+}
+
 /// Active schedule entries for the selected day of the week
 final schedulesForSelectedDateProvider = Provider<List<ScheduleEntry>>((ref) {
   final allSchedules = ref.watch(scheduleListProvider);
@@ -27,7 +38,7 @@ final schedulesForSelectedDateProvider = Provider<List<ScheduleEntry>>((ref) {
     final matchesCategory = categoryFilter == null || entry.category == categoryFilter;
     return matchesDay && matchesCategory;
   }).toList()
-    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    ..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
 });
 
 /// Schedules specifically for today's weekday
@@ -36,7 +47,7 @@ final schedulesForTodayProvider = Provider<List<ScheduleEntry>>((ref) {
   final weekday = DateTime.now().weekday;
 
   return allSchedules.where((entry) => entry.daysOfWeek.contains(weekday)).toList()
-    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    ..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
 });
 
 /// Counts how many schedule entries exist for each weekday (1..7)
@@ -76,21 +87,35 @@ final activeOrUpcomingScheduleProvider = Provider<ScheduleLiveStatus?>((ref) {
   final currentWeekday = now.weekday;
   final currentMinutes = now.hour * 60 + now.minute;
 
+  // BUG FIX (Critical #7 — Part A): Also check yesterday's overnight shifts.
+  // An overnight shift that started yesterday (e.g. Sat 22:00 → Sun 02:00)
+  // must still show as ongoing when the weekday flips to Sunday.
+  final yesterdayWeekday = currentWeekday == 1 ? 7 : currentWeekday - 1;
+
   final todayEntries = allSchedules
       .where((e) => e.isActive && e.daysOfWeek.contains(currentWeekday))
       .toList()
-    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    ..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
 
-  // 1. Check for ONGOING class first (start <= now < end)
-  for (final entry in todayEntries) {
-    final startParts = entry.startTime.split(':');
+  // Yesterday's entries that span next day (still potentially ongoing)
+  final overnightFromYesterday = allSchedules
+      .where((e) =>
+          e.isActive &&
+          e.spansNextDay &&
+          e.daysOfWeek.contains(yesterdayWeekday))
+      .toList();
+
+  // 1. Check overnight entries from YESTERDAY that are still ongoing now
+  for (final entry in overnightFromYesterday) {
     final endParts = entry.endTime.split(':');
-    if (startParts.length == 2 && endParts.length == 2) {
-      final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
-      int endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
-      if (endMin < startMin) endMin += 24 * 60; // Overnight
-
-      if (currentMinutes >= startMin && currentMinutes < endMin) {
+    if (endParts.length == 2) {
+      final endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+      // If current time is before the end time on this new day, it's ongoing
+      if (currentMinutes < endMin) {
+        final startParts = entry.startTime.split(':');
+        final startMin = startParts.length == 2
+            ? int.parse(startParts[0]) * 60 + int.parse(startParts[1])
+            : 0;
         return ScheduleLiveStatus(
           entry: entry,
           isOngoing: true,
@@ -101,7 +126,36 @@ final activeOrUpcomingScheduleProvider = Provider<ScheduleLiveStatus?>((ref) {
     }
   }
 
-  // 2. If no ongoing class, find the NEXT upcoming class today (start > now)
+  // 2. Check for ONGOING class in today's entries (start <= now < end)
+  for (final entry in todayEntries) {
+    final startParts = entry.startTime.split(':');
+    final endParts = entry.endTime.split(':');
+    if (startParts.length == 2 && endParts.length == 2) {
+      final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      int endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+      if (endMin < startMin) endMin += 24 * 60; // Overnight
+
+      // BUG FIX (Critical #7 — Part B): The old check `currentMinutes >= startMin`
+      // fails after midnight for overnight shifts because currentMinutes resets
+      // to a small value (e.g. 120 for 2:00 AM) while startMin stays large
+      // (e.g. 1320 for 10:00 PM). We must also accept the post-midnight window
+      // where currentMinutes is in the wrapped portion [0, endMin - 1440).
+      final bool isOngoing = endMin > 1440
+          ? (currentMinutes >= startMin || currentMinutes < (endMin - 1440))
+          : (currentMinutes >= startMin && currentMinutes < endMin);
+
+      if (isOngoing) {
+        return ScheduleLiveStatus(
+          entry: entry,
+          isOngoing: true,
+          startMinutes: startMin,
+          endMinutes: endMin,
+        );
+      }
+    }
+  }
+
+  // 3. If no ongoing class, find the NEXT upcoming class today (start > now)
   for (final entry in todayEntries) {
     final startParts = entry.startTime.split(':');
     final endParts = entry.endTime.split(':');
@@ -150,7 +204,7 @@ final nextUpcomingAcrossAllDaysProvider = Provider<NextUpcomingScheduleResult?>(
   final todayEntries = allSchedules
       .where((e) => e.isActive && e.daysOfWeek.contains(currentWeekday))
       .toList()
-    ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    ..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
 
   for (final entry in todayEntries) {
     final startParts = entry.startTime.split(':');
@@ -179,7 +233,7 @@ final nextUpcomingAcrossAllDaysProvider = Provider<NextUpcomingScheduleResult?>(
     final candidateEntries = allSchedules
         .where((e) => e.isActive && e.daysOfWeek.contains(candidateWeekday))
         .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+      ..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
 
     if (candidateEntries.isNotEmpty) {
       final nextEntry = candidateEntries.first;

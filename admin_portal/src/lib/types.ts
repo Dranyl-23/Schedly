@@ -49,6 +49,9 @@ export interface UserAccount {
   photoUrl?: string;
   createdAt?: any;
   lastSyncAt?: any;
+  lastActive?: any;
+  updatedAt?: any;
+  schedulesCount?: number;
   appVersion?: string;
   platform?: string;
 }
@@ -56,13 +59,16 @@ export interface UserAccount {
 export interface UserProfileDoc {
   id: string;
   name: string;
-  role: string;
-  institutionName: string;
-  category: string;
-  isCurrent: boolean;
+  role?: string;
+  type?: string;
+  institutionName?: string;
+  category?: string;
+  isCurrent?: boolean;
+  isActive?: boolean;
   academicYear?: string;
   semester?: string;
   colorHex?: string;
+  updatedAt?: any;
 }
 
 export interface UserScheduleDoc {
@@ -72,10 +78,14 @@ export interface UserScheduleDoc {
   daysOfWeek: number[];
   startTime: string;
   endTime: string;
-  location: string;
-  category: string;
+  location?: string;
+  category?: string;
   colorHex?: string;
+  notes?: string;
+  reminders?: number[];
   alarmLeadMinutes?: number;
+  isActive?: boolean;
+  updatedAt?: any;
 }
 
 export interface Institution {

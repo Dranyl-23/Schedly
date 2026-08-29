@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/schedule_entry.dart';
@@ -51,13 +52,29 @@ class RawOcrResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final rawText = _generateRawTextPreview();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Raw OCR Text'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 20),
+            tooltip: 'Copy Raw Text',
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: rawText));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Raw OCR text copied to clipboard!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(

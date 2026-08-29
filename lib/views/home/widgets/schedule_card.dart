@@ -48,17 +48,38 @@ class ScheduleCard extends StatelessWidget {
     final now = DateTime.now();
     final currentWeekday = now.weekday;
     final currentMinutes = now.hour * 60 + now.minute;
+    // BUG FIX (High #13): Mirror the overnight fix from filter_providers.dart.
+    // The old check `currentMinutes >= startMin` fails after midnight for
+    // overnight shifts. Also add yesterday check for shifts that started
+    // the previous day and are still ongoing (e.g. 22:00 Sat → 02:00 Sun).
+    final yesterdayWeekday = currentWeekday == 1 ? 7 : currentWeekday - 1;
     bool isOngoing = false;
-    if (entry.daysOfWeek.contains(currentWeekday)) {
+
+    // Check: did this shift start YESTERDAY and is still ongoing now?
+    if (!isOngoing && entry.spansNextDay && entry.daysOfWeek.contains(yesterdayWeekday)) {
+      final endParts = entry.endTime.split(':');
+      if (endParts.length == 2) {
+        final endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+        if (currentMinutes < endMin) {
+          isOngoing = true;
+        }
+      }
+    }
+
+    // Check: does this shift start today and is currently ongoing?
+    if (!isOngoing && entry.daysOfWeek.contains(currentWeekday)) {
       final startParts = entry.startTime.split(':');
       final endParts = entry.endTime.split(':');
       if (startParts.length == 2 && endParts.length == 2) {
         final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
         int endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
-        if (endMin < startMin) endMin += 24 * 60;
-        if (currentMinutes >= startMin && currentMinutes < endMin) {
-          isOngoing = true;
-        }
+        if (endMin < startMin) endMin += 24 * 60; // Overnight
+
+        // Post-midnight wrap: currentMinutes may be < startMin but still within
+        // the overnight window (e.g. 2:00 AM for a 10 PM–4 AM shift)
+        isOngoing = endMin > 1440
+            ? (currentMinutes >= startMin || currentMinutes < (endMin - 1440))
+            : (currentMinutes >= startMin && currentMinutes < endMin);
       }
     }
 

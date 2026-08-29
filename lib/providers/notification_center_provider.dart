@@ -9,7 +9,18 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
   static const String boxName = 'app_notifications_box';
   Box? _box;
 
+  // BUG FIX (Critical #3): ref.listen() MUST be called synchronously in the
+  // constructor. Calling it inside an async method (after an `await`) violates
+  // Riverpod's rules and throws a StateError at runtime, silently breaking the
+  // entire notification center. The Hive box open is the only async work and
+  // stays in _init(); the listener registration moves here to the constructor.
   NotificationCenterNotifier(Ref ref) : super([]) {
+    // ✅ Register the schedule listener synchronously before any async work
+    ref.listen(scheduleListProvider, (previous, next) {
+      _generateDynamicNotifications(next);
+    });
+
+    // Kick off async initialization (open Hive box, load cache, build initial state)
     _init(ref);
   }
 
@@ -17,11 +28,7 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
     _box = await Hive.openBox(boxName);
     _loadFromCache();
 
-    // Listen to schedules to automatically generate smart briefing & upcoming reminders
-    ref.listen(scheduleListProvider, (previous, next) {
-      _generateDynamicNotifications(next);
-    });
-
+    // Generate dynamic notifications from the current schedule state
     final currentSchedules = ref.read(scheduleListProvider);
     _generateDynamicNotifications(currentSchedules);
   }
@@ -64,11 +71,26 @@ class NotificationCenterNotifier extends StateNotifier<List<AppNotification>> {
   void _generateDynamicNotifications(List<ScheduleEntry> schedules) {
     final now = DateTime.now();
     final currentWeekday = now.weekday;
+    final yesterdayWeekday = currentWeekday == 1 ? 7 : currentWeekday - 1;
+
+    int parseMinutes(String t) {
+      final p = t.split(':');
+      return p.length >= 2 ? (int.tryParse(p[0]) ?? 0) * 60 + (int.tryParse(p[1]) ?? 0) : 0;
+    }
 
     final todayEntries = schedules
-        .where((e) => e.isActive && e.daysOfWeek.contains(currentWeekday))
+        .where((e) {
+          if (!e.isActive) return false;
+          if (e.daysOfWeek.contains(currentWeekday)) return true;
+          if (e.spansNextDay && e.daysOfWeek.contains(yesterdayWeekday)) {
+            final endMinutes = parseMinutes(e.endTime);
+            final currentMinutes = now.hour * 60 + now.minute;
+            return currentMinutes < endMinutes;
+          }
+          return false;
+        })
         .toList()
-      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+      ..sort((a, b) => parseMinutes(a.startTime).compareTo(parseMinutes(b.startTime)));
 
     final currentList = List<AppNotification>.from(state);
 

@@ -77,7 +77,10 @@ class _ParsedPreviewViewState extends ConsumerState<ParsedPreviewView> {
           ),
         ],
       ),
-    );
+    ).whenComplete(() {
+      titleController.dispose();
+      locationController.dispose();
+    });
 
     if (updated != null) {
       setState(() {
@@ -105,17 +108,24 @@ class _ParsedPreviewViewState extends ConsumerState<ParsedPreviewView> {
     }
   }
 
+  int _parseTimeToMinutes(String time) {
+    final parts = time.split(':');
+    if (parts.length >= 2) {
+      return (int.tryParse(parts[0]) ?? 0) * 60 + (int.tryParse(parts[1]) ?? 0);
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Group items by weekday for the display
     final Map<int, List<ScheduleEntry>> grouped = {};
     for (int day = 1; day <= 7; day++) {
       final matches = _items.where((e) => e.daysOfWeek.contains(day)).toList();
       if (matches.isNotEmpty) {
-        grouped[day] = matches..sort((a, b) => a.startTime.compareTo(b.startTime));
+        grouped[day] = matches..sort((a, b) => _parseTimeToMinutes(a.startTime).compareTo(_parseTimeToMinutes(b.startTime)));
       }
     }
 
@@ -147,7 +157,27 @@ class _ParsedPreviewViewState extends ConsumerState<ParsedPreviewView> {
         ),
       ),
       body: _items.isEmpty
-          ? const Center(child: Text('No schedule entries left.'))
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.event_busy_rounded,
+                    size: 56,
+                    color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No schedule entries remaining',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    ),
+                  ),
+                ],
+              ),
+            )
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [

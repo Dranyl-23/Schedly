@@ -110,7 +110,19 @@ class NotificationService {
           await androidImplementation?.requestNotificationsPermission();
       final exactAlarmGranted =
           await androidImplementation?.requestExactAlarmsPermission();
-      return (notifGranted ?? false) && (exactAlarmGranted ?? true);
+
+      // Do NOT fall back to true — if the platform returns null the permission
+      // is NOT confirmed, so we must treat it as denied to avoid a silent
+      // SecurityException when AndroidScheduleMode.alarmClock is used.
+      final bool alarmOk = exactAlarmGranted ?? false;
+      if (!alarmOk) {
+        debugPrint(
+          'NotificationService: Exact alarm permission NOT granted. '
+          'Scheduled alarms may not fire. '
+          'Ask the user to grant "Alarms & Reminders" in device settings.',
+        );
+      }
+      return (notifGranted ?? false) && alarmOk;
     } else if (Platform.isIOS) {
       final iosImplementation = _notificationsPlugin
           .resolvePlatformSpecificImplementation<
@@ -272,9 +284,19 @@ class NotificationService {
     await _notificationsPlugin.cancelAll();
   }
 
-  /// Helper to calculate the next occurrence of a given day of week and time
+  /// Helper to calculate the next occurrence of a given day of week and time.
+  ///
+  /// Uses a unified forward-scan loop so "today already passed" and
+  /// "other weekday" are handled identically, avoiding the old fragile
+  /// 55-second special-case window that silently scheduled alarms 7 days
+  /// ahead when called even 56 seconds after the target time.
+  ///
+  /// A 30-second grace window lets alarms saved moments before their
+  /// scheduled time still fire in the immediate future rather than next week.
   tz.TZDateTime _nextInstanceOfDayAndTime(int dayOfWeek, int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+
+    // Build the candidate for today at the requested time.
     tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
       now.year,
@@ -284,32 +306,19 @@ class NotificationService {
       minute,
     );
 
-    // If today is the target weekday
-    if (scheduledDate.weekday == dayOfWeek) {
-      // If scheduled time is within the current minute or up to 60s in the past (e.g. testing right now)
-      if (scheduledDate.isBefore(now)) {
-        final diff = now.difference(scheduledDate);
-        if (diff.inMinutes == 0 && diff.inSeconds <= 55) {
-          // Trigger test alarm 2 seconds from now
-          return now.add(const Duration(seconds: 2));
-        } else {
-          // Time on this weekday has already passed, schedule for next week (+7 days)
-          scheduledDate = scheduledDate.add(const Duration(days: 7));
-        }
-      }
-    } else {
-      // Find the next matching weekday in the future
-      while (scheduledDate.weekday != dayOfWeek || scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
-        scheduledDate = tz.TZDateTime(
-          tz.local,
-          scheduledDate.year,
-          scheduledDate.month,
-          scheduledDate.day,
-          hour,
-          minute,
-        );
-      }
+    // Walk forward one day at a time until we land on the correct weekday
+    // AND the time is still in the future (with a 30-second grace window so
+    // a schedule saved just before its trigger time doesn't skip to next week).
+    final tz.TZDateTime cutoff = now.subtract(const Duration(seconds: 30));
+    while (scheduledDate.weekday != dayOfWeek || scheduledDate.isBefore(cutoff)) {
+      scheduledDate = tz.TZDateTime(
+        tz.local,
+        scheduledDate.year,
+        scheduledDate.month,
+        scheduledDate.day + 1,
+        hour,
+        minute,
+      );
     }
 
     return scheduledDate;

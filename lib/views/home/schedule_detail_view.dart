@@ -831,10 +831,15 @@ class ScheduleDetailView extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
+              // BUG FIX (Critical #4): Capture the messenger BEFORE any pop()
+              // calls. Navigator.pop() deactivates `context`, so calling
+              // ScaffoldMessenger.of(context) afterwards crashes with:
+              // "Looking up a deactivated widget's ancestor is unsafe".
+              final messenger = ScaffoldMessenger.of(context);
               ref.read(scheduleListProvider.notifier).deleteSchedule(targetEntry);
-              Navigator.pop(ctx); // Dialog
-              Navigator.pop(context); // Detail Screen
-              ScaffoldMessenger.of(context).showSnackBar(
+              Navigator.pop(ctx); // Close confirmation dialog
+              Navigator.pop(context); // Close detail screen
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text('Deleted "${targetEntry.title}"'),
                   behavior: SnackBarBehavior.floating,

@@ -341,14 +341,14 @@ export default function UsersPage() {
                       <div key={p.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D]/70 space-y-1">
                         <div className="flex items-center justify-between">
                           <p className="font-extrabold text-slate-900 dark:text-white">{p.name || "Default Profile"}</p>
-                          {p.isCurrent && (
+                          {(p.isCurrent || p.isActive) && (
                             <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[9px]">
                               Active Profile
                             </span>
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {p.institutionName} • <span className="font-semibold text-slate-700 dark:text-slate-300">{p.role}</span>
+                          {p.institutionName || p.type || "Standard"} • <span className="font-semibold text-slate-700 dark:text-slate-300">{p.role || p.category || "Schedule"}</span>
                         </p>
                       </div>
                     ))}

@@ -28,6 +28,40 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return DateFormat('MMM d').format(dt);
   }
 
+  void _confirmClearAll(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Clear All Notifications?', style: TextStyle(fontWeight: FontWeight.w800)),
+        content: const Text('This will remove all notification logs and alerts from your device history.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(notificationCenterProvider.notifier).clearAll();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('All notifications cleared')),
+              );
+            },
+            child: const Text('Clear All', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -67,7 +101,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               onSelected: (val) {
                 if (val == 'clear') {
-                  ref.read(notificationCenterProvider.notifier).clearAll();
+                  _confirmClearAll(context);
                 }
               },
               itemBuilder: (ctx) => [
