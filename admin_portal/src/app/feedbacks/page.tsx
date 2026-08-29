@@ -200,13 +200,13 @@ export default function FeedbacksPage() {
 
         {/* Top Status Tabs Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs">
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs">
             <button
               onClick={() => { setSelectedStatus("all"); setCurrentPage(1); }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 selectedStatus === "all"
                   ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:text-white dark:text-white"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
               }`}
             >
               All ({feedbacks.length})

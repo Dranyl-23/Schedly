@@ -1,0 +1,64 @@
+import { NextResponse } from "next/server";
+import clientPromise from "@/lib/mongodb";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { collectionName, documents } = body;
+
+    if (!collectionName || !Array.isArray(documents)) {
+      return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db("reminda_warehouse");
+    const col = db.collection(collectionName);
+
+    if (documents.length === 0) {
+      return NextResponse.json({ success: true, count: 0 });
+    }
+
+    // Bulk upsert by id
+    const operations = documents.map((doc: any) => ({
+      updateOne: {
+        filter: { id: doc.id },
+        update: { $set: { ...doc, updatedAt: new Date() } },
+        upsert: true
+      }
+    }));
+
+    const result = await col.bulkWrite(operations);
+
+    return NextResponse.json({
+      success: true,
+      upsertedCount: result.upsertedCount,
+      modifiedCount: result.modifiedCount,
+      matchedCount: result.matchedCount,
+      totalProcessed: documents.length
+    });
+  } catch (err: any) {
+    console.error("MongoDB Sync API Error:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const client = await clientPromise;
+    const db = client.db("reminda_warehouse");
+    const collections = await db.listCollections().toArray();
+    
+    const counts: Record<string, number> = {};
+    for (const c of collections) {
+      counts[c.name] = await db.collection(c.name).countDocuments();
+    }
+
+    return NextResponse.json({
+      status: "connected",
+      database: "reminda_warehouse",
+      collections: counts
+    });
+  } catch (err: any) {
+    return NextResponse.json({ status: "error", error: err.message }, { status: 500 });
+  }
+}
