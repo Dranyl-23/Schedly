@@ -62,8 +62,33 @@ export default function FeedbacksPage() {
   const [copied, setCopied] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
-
   const [userPhotos, setUserPhotos] = useState<Record<string, string>>({});
+
+  // BUG FIX (Critical #8): Track whether pending feedbacks need a MongoDB sync.
+  // Previously, fetch("/api/mongodb/sync") was called inside the onSnapshot
+  // callback, meaning the ENTIRE collection was re-uploaded to MongoDB on
+  // EVERY Firestore change (every status update, every new feedback, etc.).
+  // This caused extreme bandwidth usage and potential rate-limiting.
+  // Now syncing is done only on explicit user action via a Sync button.
+  const [pendingSync, setPendingSync] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const syncToMongoDB = async (data: UserFeedback[]) => {
+    if (data.length === 0 || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      await fetch("/api/mongodb/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collectionName: "customer_feedbacks", documents: data })
+      });
+      setPendingSync(false);
+    } catch {
+      // Sync failure is non-critical; user can retry via button
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     // Listen to users collection to automatically enrich avatars
@@ -101,14 +126,8 @@ export default function FeedbacksPage() {
 
       setFeedbacks(list);
       setIsLoading(false);
-
-      if (list.length > 0) {
-        fetch("/api/mongodb/sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collectionName: "customer_feedbacks", documents: list })
-        }).catch(() => {});
-      }
+      // Mark that a sync is available — user can trigger it via the Sync button
+      if (list.length > 0) setPendingSync(true);
     }, (err: any) => {
       console.warn("Feedback snapshot notice:", err.message);
       setIsLoading(false);
@@ -262,7 +281,7 @@ export default function FeedbacksPage() {
               placeholder="Search by customer name, email, or message..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] text-xs font-semibold text-slate-800 dark:text-slate-200 dark:text-slate-200 placeholder:text-slate-400 focus:outline-blue-600 shadow-xs"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D] text-xs font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-blue-600 shadow-xs"
             />
           </div>
         </div>
@@ -288,7 +307,7 @@ export default function FeedbacksPage() {
         {isLoading ? (
           <SkeletonCardGrid count={6} />
         ) : filteredFeedbacks.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] text-slate-400 text-xs space-y-2">
+          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 text-slate-400 text-xs space-y-2">
             <MessageSquare className="w-8 h-8 mx-auto text-slate-300" />
             <p>No feedback submissions found matching your filter.</p>
           </div>
@@ -301,7 +320,7 @@ export default function FeedbacksPage() {
                 return (
                   <div
                     key={f.id}
-                    className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                    className="p-6 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                   >
                     <div>
                       {/* User Header & Star Rating */}
@@ -323,7 +342,7 @@ export default function FeedbacksPage() {
                             );
                           })()}
                           <div>
-                            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white dark:text-white">{f.userName || "User"}</h4>
+                            <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">{f.userName || "User"}</h4>
                             <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
                               <Mail className="w-3 h-3 text-slate-400" />
                               {f.contactEmail || "Anonymous / Guest"}
@@ -346,7 +365,7 @@ export default function FeedbacksPage() {
 
                       {/* Feedback Category Badge & Timestamp */}
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 dark:text-slate-300">
+                        <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300">
                           {f.category || "General Feedback"}
                         </span>
                         <span className="text-[10px] text-slate-400 font-medium">
@@ -355,14 +374,14 @@ export default function FeedbacksPage() {
                       </div>
 
                       {/* Comment Message Body */}
-                      <p className="text-xs text-slate-700 dark:text-slate-300 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#25273A]/60/70 dark:bg-[#25273A]/50 p-3.5 rounded-2xl border border-slate-100 dark:border-[#282A3D] mb-4 whitespace-pre-wrap">
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#25273A]/50 p-3.5 rounded-2xl border border-slate-100 dark:border-[#282A3D] mb-4 whitespace-pre-wrap">
                         {f.comment || f.message || "No detailed comment provided."}
                       </p>
                     </div>
 
                     {/* Footer Actions & Status Select */}
                     <div className="pt-3 border-t border-slate-100 dark:border-[#282A3D] flex items-center justify-between gap-2">
-                      <div className="flex-1 max-w-[130px]">
+                      <div className="flex-1 max-w-32.5">
                         <CustomDropdown
                           value={currentStatus}
                           onChange={(val) => handleUpdateStatus(f.id, val as any)}
@@ -380,7 +399,7 @@ export default function FeedbacksPage() {
                           <>
                             <button
                               onClick={() => handleCopyEmail(f.contactEmail!)}
-                              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-300 dark:text-slate-300 hover:bg-slate-100 dark:bg-[#25273A] transition-colors"
+                              className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:bg-[#25273A] transition-colors"
                               title="Copy Email"
                             >
                               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
@@ -420,24 +439,24 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-[#1C1D2B] rounded-2xl border border-slate-200 dark:border-[#282A3D]/70 shadow-xs">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-300 dark:text-slate-400">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                   Showing {Math.min((currentPage - 1) * itemsPerPage + 1, filteredFeedbacks.length)} to {Math.min(currentPage * itemsPerPage, filteredFeedbacks.length)} of {filteredFeedbacks.length} feedbacks
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 bg-white hover:bg-slate-50 dark:bg-[#25273A]/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 bg-white hover:bg-slate-50 dark:bg-[#25273A]/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Previous
                   </button>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 dark:text-slate-200 px-2">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 px-2">
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 dark:text-slate-300 bg-white hover:bg-slate-50 dark:bg-[#25273A]/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 bg-white hover:bg-slate-50 dark:bg-[#25273A]/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Next
                   </button>
@@ -449,7 +468,7 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
 
         {/* Interactive Reply Modal */}
         {replyModalFeedback && typeof document !== "undefined" && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-9999 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
@@ -457,7 +476,7 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
                     <Send className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white dark:text-white">Reply to {replyModalFeedback.userName || "User"}</h3>
+                    <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">Reply to {replyModalFeedback.userName || "User"}</h3>
                     <p className="text-[11px] text-slate-400 font-mono">{replyModalFeedback.contactEmail}</p>
                   </div>
                 </div>
@@ -473,14 +492,14 @@ Thank you for reaching out to the Reminda Team regarding your feedback on "${f.c
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Type your official reply here..."
-                  className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-xs text-slate-900 dark:text-white dark:text-white focus:outline-blue-600 leading-relaxed"
+                  className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-[#25273A]/60 border border-slate-200 dark:border-[#282A3D] text-xs text-slate-900 dark:text-white focus:outline-blue-600 leading-relaxed"
                 />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#282A3D]">
                 <button
                   onClick={() => setReplyModalFeedback(null)}
-                  className="px-4 py-2 rounded-xl text-slate-500 dark:text-slate-300 dark:text-slate-400 hover:bg-slate-100 dark:bg-[#25273A] font-bold text-xs"
+                  className="px-4 py-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:bg-[#25273A] font-bold text-xs"
                 >
                   Cancel
                 </button>

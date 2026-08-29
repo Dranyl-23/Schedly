@@ -10,6 +10,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
+    if (documents.some((d: any) => !d || typeof d !== "object" || !d.id)) {
+      return NextResponse.json({ error: "One or more documents are missing a valid 'id' property" }, { status: 400 });
+    }
+
     const client = await clientPromise;
     const db = client.db("reminda_warehouse");
     const col = db.collection(collectionName);

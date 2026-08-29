@@ -109,6 +109,25 @@ export default function AnalyticsDashboard() {
   // --- DYNAMIC CALCULATIONS ---
 
   const totalUsers = users.length;
+
+  // Build high-precision avatar lookup map from users collection
+  const userPhotos = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((u) => {
+      if (u.photoUrl) {
+        map[u.id] = u.photoUrl;
+        if (u.email) map[u.email.toLowerCase().trim()] = u.photoUrl;
+      }
+    });
+    return map;
+  }, [users]);
+
+  const getUserAvatar = (f: UserFeedback) => {
+    if (f.userPhotoUrl) return f.userPhotoUrl;
+    if (f.userId && userPhotos[f.userId]) return userPhotos[f.userId];
+    if (f.contactEmail && userPhotos[f.contactEmail.toLowerCase().trim()]) return userPhotos[f.contactEmail.toLowerCase().trim()];
+    return null;
+  };
   const totalFeedbacks = feedbacks.length;
   const totalAiSamples = aiSamples.length;
 
@@ -181,11 +200,13 @@ export default function AnalyticsDashboard() {
     const totalInst = institutions.length || 556;
     const colleges = institutions.filter(i => i.category?.includes("College") || i.category?.includes("University")).length || 420;
     const hospitals = institutions.filter(i => i.category?.includes("Hospital") || i.category?.includes("Clinic")).length || 65;
-    const corporate = totalInst - colleges - hospitals;
+    const corporate = Math.max(0, totalInst - colleges - hospitals);
 
-    const studentPct = Math.round((colleges / totalInst) * 100) || 62;
-    const workPct = Math.max(Math.round((corporate / totalInst) * 100), 26);
-    const healthPct = Math.max(100 - studentPct - workPct, 12);
+    const rawStudent = (colleges / totalInst) * 100;
+    const rawWork = (corporate / totalInst) * 100;
+    const studentPct = Math.round(rawStudent) || 62;
+    const workPct = Math.round(rawWork) || 26;
+    const healthPct = Math.max(0, 100 - studentPct - workPct);
 
     const gap = 1.6;
 
@@ -801,17 +822,30 @@ export default function AnalyticsDashboard() {
                   </div>
                 ) : (
                   <div className="divide-y divide-slate-100 dark:divide-[#282A3D]">
-                    {feedbacks.slice(0, 4).map((f) => (
-                      <div key={f.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/50 rounded-xl px-2 -mx-2 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                            {(f.userName || "U")[0].toUpperCase()}
+                    {feedbacks.slice(0, 4).map((f) => {
+                      const avatarUrl = getUserAvatar(f);
+                      return (
+                        <div key={f.id} className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/50 rounded-xl px-2 -mx-2 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {avatarUrl ? (
+                              <img
+                                src={avatarUrl}
+                                alt={f.userName || "User"}
+                                className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-slate-200 dark:ring-slate-700 shadow-xs"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-linear-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                {(f.userName || "U")[0].toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{f.userName || "Reminda User"}</p>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-300 truncate">{f.category || "General"}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{f.userName || "Reminda User"}</p>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-300 truncate">{f.category || "General"}</p>
-                          </div>
-                        </div>
 
                         <div className="text-right shrink-0">
                           <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold transition-transform hover:scale-105 ${
@@ -826,7 +860,8 @@ export default function AnalyticsDashboard() {
                           <p className="text-[10px] text-yellow-500 font-bold mt-0.5">{"★".repeat(f.rating || 5)}</p>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

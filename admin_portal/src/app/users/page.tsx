@@ -42,7 +42,7 @@ export default function UsersPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Custom Confirmation Modal State
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name?: string; displayName?: string; email?: string } | null>(null);
 
   // Inspector Data State
   const [userProfiles, setUserProfiles] = useState<UserProfileDoc[]>([]);
@@ -80,7 +80,7 @@ export default function UsersPage() {
       if (inspectingUser && inspectingUser.id === deleteTarget.id) {
         setInspectingUser(null);
       }
-      showToast(`User record "${deleteTarget.name}" permanently deleted.`);
+      showToast(`User record "${deleteTarget.displayName || (deleteTarget as any).name || deleteTarget.email || deleteTarget.id}" permanently deleted.`);
     } catch (err: any) {
       showToast("Delete failed: " + err.message);
     } finally {
@@ -98,15 +98,15 @@ export default function UsersPage() {
     try {
       // 1. Fetch Profiles
       const profilesSnap = await getDocs(collection(db, "users", user.id, "profiles"));
-      const pList: UserProfileDoc[] = [];
-      profilesSnap.forEach(d => pList.push({ id: d.id, ...d.data() } as UserProfileDoc));
-      setUserProfiles(pList);
+      const profs: any[] = [];
+      profilesSnap.forEach((d) => profs.push({ id: d.id, ...d.data() }));
+      setUserProfiles(profs);
 
       // 2. Fetch Schedules
       const schedulesSnap = await getDocs(collection(db, "users", user.id, "schedules"));
-      const sList: UserScheduleDoc[] = [];
-      schedulesSnap.forEach(d => sList.push({ id: d.id, ...d.data() } as UserScheduleDoc));
-      setUserSchedules(sList);
+      const scheds: any[] = [];
+      schedulesSnap.forEach((d) => scheds.push({ id: d.id, ...d.data() }));
+      setUserSchedules(scheds);
     } catch (err: any) {
       console.error("Inspector error:", err);
     } finally {
@@ -117,10 +117,13 @@ export default function UsersPage() {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const filtered = users.filter((u) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
     return (
-      (u.displayName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.id || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (u.displayName || "").toLowerCase().includes(q) ||
+      ((u as any).name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.id || "").toLowerCase().includes(q)
     );
   });
 
@@ -140,7 +143,7 @@ export default function UsersPage() {
         <ConfirmModal
           isOpen={!!deleteTarget}
           title="Delete User Account?"
-          message={`Are you sure you want to permanently delete the account for "${deleteTarget?.name}"? This action will remove all their cloud-synced schedule records.`}
+          message={`Are you sure you want to permanently delete the account for "${deleteTarget?.displayName || (deleteTarget as any)?.name || deleteTarget?.email || 'this user'}"? This action will remove all their cloud-synced schedule records.`}
           confirmText="Yes, Delete Record"
           cancelText="Keep Account"
           onConfirm={handleConfirmDelete}
@@ -155,13 +158,13 @@ export default function UsersPage() {
             </p>
           </div>
 
-          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/80 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs">
+          <div className="px-3.5 py-2 rounded-2xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D] text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs">
             Total Users: {users.length}
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs">
+        <div className="p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs">
           <div className="relative w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -178,13 +181,13 @@ export default function UsersPage() {
         {isLoading ? (
           <SkeletonTable rows={5} />
         ) : filtered.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] text-slate-400 text-xs space-y-2">
+          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D] text-slate-400 text-xs space-y-2">
             <Users className="w-10 h-10 mx-auto text-slate-300" />
             <p className="font-bold text-sm text-slate-800 dark:text-slate-200">No registered users yet</p>
             <p className="text-slate-400">Users who open Reminda or log in on Android/iOS will automatically appear here in real time.</p>
           </div>
         ) : (
-          <div className="rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs overflow-hidden">
+          <div className="rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -224,7 +227,7 @@ export default function UsersPage() {
                         </div>
                       </td>
 
-                      <td className="py-4 px-6 text-slate-600 dark:text-slate-400 dark:text-slate-300 font-mono text-xs">
+                      <td className="py-4 px-6 text-slate-600 dark:text-slate-400 font-mono text-xs">
                         {u.email || "Anonymous Account"}
                       </td>
 
@@ -267,7 +270,7 @@ export default function UsersPage() {
 
         {/* User Schedule Inspector Drawer / Modal */}
         {inspectingUser && typeof document !== "undefined" && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-9999 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-3xl bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-start justify-between pb-4 border-b border-slate-100 dark:border-[#282A3D]">
