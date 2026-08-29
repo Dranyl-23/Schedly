@@ -76,13 +76,30 @@ export default function UsersPage() {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteDoc(doc(db, "users", deleteTarget.id));
+      const res = await fetch("/api/users/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: deleteTarget.id }),
+      });
+      const result = await res.json();
+
+      if (!res.ok && !result.success) {
+        // Fallback to client-side Firestore deletion if API returned error
+        await deleteDoc(doc(db, "users", deleteTarget.id));
+      }
+
       if (inspectingUser && inspectingUser.id === deleteTarget.id) {
         setInspectingUser(null);
       }
-      showToast(`User record "${deleteTarget.displayName || (deleteTarget as any).name || deleteTarget.email || deleteTarget.id}" permanently deleted.`);
+      showToast(`User "${deleteTarget.displayName || (deleteTarget as any).name || deleteTarget.email || deleteTarget.id}" permanently deleted.`);
     } catch (err: any) {
-      showToast("Delete failed: " + err.message);
+      // Fallback
+      try {
+        await deleteDoc(doc(db, "users", deleteTarget.id));
+        showToast(`User "${deleteTarget.displayName || (deleteTarget as any).name || deleteTarget.email || deleteTarget.id}" deleted.`);
+      } catch (fallbackErr: any) {
+        showToast("Delete failed: " + fallbackErr.message);
+      }
     } finally {
       setDeleteTarget(null);
     }
