@@ -359,7 +359,116 @@ class InstitutionItem {
   static void setCloudInstitutions(List<InstitutionItem> list) {
     _cloudInstitutions = list;
   }
-  static List<InstitutionItem> get allCombined => [..._cloudInstitutions, ...presets];
+
+  static String normalizeCategory(String cat, {String name = '', String shortName = ''}) {
+    final n = '$name $shortName'.toLowerCase();
+
+    // 1. High-confidence Government keywords in institution name
+    if (n.contains('government') ||
+        n.contains('city hall') ||
+        n.contains('municipal hall') ||
+        n.contains('provincial capitol') ||
+        n.contains('capitol (') ||
+        n.contains('hall)') ||
+        n.contains('deped') ||
+        n.contains('bureau of') ||
+        n.contains('department of') ||
+        n.contains('lgu ') ||
+        n.contains('police') ||
+        n.contains('barangay')) {
+      return 'gov';
+    }
+
+    // 2. High-confidence Hospital / Duty keywords in institution name
+    if (n.contains('hospital') ||
+        n.contains('medical center') ||
+        n.contains('medical clinic') ||
+        n.contains('health center') ||
+        n.contains('sanitarium') ||
+        n.contains('infirmary') ||
+        n.contains('dialysis') ||
+        n.contains('doctors hospital')) {
+      return 'duty';
+    }
+
+    // 3. High-confidence Workplace / Retail keywords in institution name
+    if (n.contains('jollibee') ||
+        n.contains("mcdonald's") ||
+        n.contains('chowking') ||
+        n.contains('mang inasal') ||
+        n.contains('greenwich') ||
+        n.contains('kfc') ||
+        n.contains('7-eleven') ||
+        n.contains('gaisano') ||
+        n.contains('sm city') ||
+        n.contains('sm mall') ||
+        n.contains('sm prime') ||
+        n.contains('robinsons mall') ||
+        n.contains('ayala mall') ||
+        n.contains('abreeza') ||
+        n.contains('supermarket') ||
+        n.contains('department store') ||
+        n.contains('bpo') ||
+        n.contains('concentrix') ||
+        n.contains('teleperformance')) {
+      return 'work';
+    }
+
+    // 4. Check explicit category string
+    final c = cat.trim().toLowerCase();
+    if (c == 'duty' || c.contains('hospital') || c.contains('clinic') || c.contains('health') || c.contains('medical') || c.contains('duty')) {
+      return 'duty';
+    }
+    if (c == 'work' || c.contains('corporate') || c.contains('work') || c.contains('retail') || c.contains('company') || c.contains('bpo') || c.contains('job') || c.contains('mall')) {
+      return 'work';
+    }
+    if (c == 'gov' || c == 'government' || c.contains('gov') || c.contains('public') || c.contains('capitol') || c.contains('city hall') || c.contains('deped')) {
+      return 'gov';
+    }
+
+    return 'school';
+  }
+
+  static String _normalizeKey(String name) {
+    return name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
+  }
+
+  /// Deduplicated directory where dynamic Cloud Firestore institutions override hardcoded presets
+  static List<InstitutionItem> get allCombined {
+    final Map<String, InstitutionItem> map = {};
+
+    // 1. Load presets first
+    for (final p in presets) {
+      final key = _normalizeKey(p.name);
+      map[key] = p;
+    }
+
+    // 2. Cloud institutions override and enrich presets dynamically
+    for (final c in _cloudInstitutions) {
+      final key = _normalizeKey(c.name);
+      if (map.containsKey(key)) {
+        final existing = map[key]!;
+        map[key] = InstitutionItem(
+          id: c.id,
+          name: c.name,
+          shortName: c.shortName.isNotEmpty ? c.shortName : existing.shortName,
+          category: c.category,
+          countryCode: c.countryCode.isNotEmpty ? c.countryCode : existing.countryCode,
+          regionCode: c.regionCode.isNotEmpty ? c.regionCode : existing.regionCode,
+          city: c.city.isNotEmpty ? c.city : existing.city,
+          icon: c.icon,
+          themeColor: c.themeColor,
+          assetLogo: existing.assetLogo,
+          logoUrl: c.logoUrl,
+          emblemInitials: c.emblemInitials.isNotEmpty ? c.emblemInitials : existing.emblemInitials,
+        );
+      } else {
+        map[key] = c;
+      }
+    }
+
+    return map.values.toList();
+  }
 
   factory InstitutionItem.fromFirestore(Map<String, dynamic> json, String docId) {
     Color parseHex(String? hex) {
@@ -370,33 +479,30 @@ class InstitutionItem {
       return Color(clean.length == 6 ? 0xFF000000 | val : val);
     }
 
-    IconData parseIcon(String? cat) {
-      final c = (cat ?? '').toLowerCase();
-      if (c.contains('hospital') || c.contains('medic') || c.contains('duty')) return Icons.local_hospital_rounded;
-      if (c.contains('work') || c.contains('corp') || c.contains('job')) return Icons.business_center_rounded;
-      if (c.contains('gov')) return Icons.account_balance_rounded;
-      return Icons.school_rounded;
-    }
+    final instName = json['name'] as String? ?? docId;
+    final instShort = json['shortName'] as String? ?? '';
+    final catNormalized = normalizeCategory(
+      json['category'] as String? ?? '',
+      name: instName,
+      shortName: instShort,
+    );
 
-    String catNormalized = 'school';
-    final rawCat = (json['category'] as String? ?? '').toLowerCase();
-    if (rawCat.contains('hospital') || rawCat.contains('clinic') || rawCat.contains('duty')) {
-      catNormalized = 'duty';
-    } else if (rawCat.contains('corporate') || rawCat.contains('work') || rawCat.contains('job')) {
-      catNormalized = 'work';
-    } else if (rawCat.contains('gov')) {
-      catNormalized = 'government';
+    IconData parseIcon(String cat) {
+      if (cat == 'duty') return Icons.local_hospital_rounded;
+      if (cat == 'work') return Icons.business_center_rounded;
+      if (cat == 'gov') return Icons.account_balance_rounded;
+      return Icons.school_rounded;
     }
 
     return InstitutionItem(
       id: docId,
-      name: json['name'] as String? ?? docId,
-      shortName: json['shortName'] as String? ?? '',
+      name: instName,
+      shortName: instShort,
       category: catNormalized,
-      countryCode: 'PH',
+      countryCode: json['countryCode'] as String? ?? 'PH',
       regionCode: json['regionCode'] as String? ?? 'R11',
       city: json['city'] as String? ?? '',
-      icon: parseIcon(json['category'] as String?),
+      icon: parseIcon(catNormalized),
       themeColor: parseHex(json['themeColor'] as String?),
       logoUrl: json['logoUrl'] as String? ?? '',
       emblemInitials: json['emblemInitials'] as String? ?? '',
@@ -7596,11 +7702,15 @@ class InstitutionItem {
     String city = '',
     String query = '',
   }) {
+    final targetCat = normalizeCategory(category);
+    final targetReg = regionCode.trim().toLowerCase();
+    final targetCity = city.trim().toLowerCase();
+    final q = query.trim().toLowerCase();
+
     return allCombined.where((item) {
-      final matchesCategory = item.category == category;
-      final matchesRegion   = item.regionCode == regionCode;
-      final matchesCity     = city.isEmpty || item.city.toLowerCase() == city.toLowerCase();
-      final q = query.toLowerCase();
+      final matchesCategory = normalizeCategory(item.category, name: item.name, shortName: item.shortName) == targetCat;
+      final matchesRegion   = item.regionCode.trim().toLowerCase() == targetReg;
+      final matchesCity     = targetCity.isEmpty || item.city.trim().toLowerCase() == targetCity;
       final matchesQuery    = q.isEmpty ||
           item.name.toLowerCase().contains(q) ||
           item.shortName.toLowerCase().contains(q) ||

@@ -95,7 +95,22 @@ class UserSetupNotifier extends StateNotifier<UserSetupState> {
     );
   }
 
-  void updateRole(String role) => state = state.copyWith(role: role);
+  void updateRole(String role) {
+    if (state.role != role) {
+      state = state.copyWith(
+        role: role,
+        organizationName: '',
+        organizationShort: '',
+        organizationColorHex: role == 'work'
+            ? '#F59E0B'
+            : role == 'duty'
+                ? '#10B981'
+                : role == 'gov'
+                    ? '#8B5CF6'
+                    : '#2563EB',
+      );
+    }
+  }
 
   void updateCountry(String countryCode) => state = state.copyWith(
     countryCode: countryCode, regionCode: '', city: '',

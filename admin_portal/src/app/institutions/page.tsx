@@ -46,12 +46,80 @@ import {
   Tag
 } from "lucide-react";
 
+// Normalizes any category string to the 4 standard executive sectors
+function normalizeCategoryLabel(cat?: string, name?: string, shortName?: string): string {
+  const n = ((name || "") + " " + (shortName || "")).toLowerCase();
+  if (
+    n.includes("government") ||
+    n.includes("city hall") ||
+    n.includes("municipal hall") ||
+    n.includes("provincial capitol") ||
+    n.includes("capitol (") ||
+    n.includes("hall)") ||
+    n.includes("deped") ||
+    n.includes("bureau of") ||
+    n.includes("department of") ||
+    n.includes("lgu ") ||
+    n.includes("police") ||
+    n.includes("barangay")
+  ) {
+    return "Government Sector";
+  }
+  if (
+    n.includes("hospital") ||
+    n.includes("medical center") ||
+    n.includes("medical clinic") ||
+    n.includes("health center") ||
+    n.includes("sanitarium") ||
+    n.includes("infirmary") ||
+    n.includes("dialysis") ||
+    n.includes("doctors hospital")
+  ) {
+    return "Healthcare & Duty Roster";
+  }
+  if (
+    n.includes("jollibee") ||
+    n.includes("mcdonald's") ||
+    n.includes("chowking") ||
+    n.includes("mang inasal") ||
+    n.includes("greenwich") ||
+    n.includes("kfc") ||
+    n.includes("7-eleven") ||
+    n.includes("gaisano") ||
+    n.includes("sm city") ||
+    n.includes("sm mall") ||
+    n.includes("sm prime") ||
+    n.includes("robinsons mall") ||
+    n.includes("ayala mall") ||
+    n.includes("abreeza") ||
+    n.includes("supermarket") ||
+    n.includes("department store") ||
+    n.includes("bpo") ||
+    n.includes("concentrix") ||
+    n.includes("teleperformance")
+  ) {
+    return "Private Workplace / Retail";
+  }
+
+  const c = (cat || "").toLowerCase();
+  if (c.includes("hospital") || c.includes("clinic") || c.includes("health") || c.includes("duty") || c.includes("medic")) {
+    return "Healthcare & Duty Roster";
+  }
+  if (c.includes("work") || c.includes("corp") || c.includes("retail") || c.includes("bpo") || c.includes("mall") || c.includes("fast food") || c.includes("store")) {
+    return "Private Workplace / Retail";
+  }
+  if (c.includes("gov") || c.includes("public") || c.includes("hall") || c.includes("capitol") || c.includes("deped")) {
+    return "Government Sector";
+  }
+  return "Student / University";
+}
+
 export default function InstitutionsPage() {
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [isBatchCategoryModalOpen, setIsBatchCategoryModalOpen] = useState(false);
-  const [batchCategory, setBatchCategory] = useState("College / University");
+  const [batchCategory, setBatchCategory] = useState("Student / University");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedRegion, setSelectedRegion] = useState("All");
@@ -77,7 +145,7 @@ export default function InstitutionsPage() {
   // Form State
   const [name, setName] = useState("");
   const [shortName, setShortName] = useState("");
-  const [category, setCategory] = useState("College / University");
+  const [category, setCategory] = useState("Student / University");
   const [regionCode, setRegionCode] = useState("Region XI — Davao Region");
   const [city, setCity] = useState("Davao City");
   const [themeColor, setThemeColor] = useState("#2563EB");
@@ -115,7 +183,7 @@ export default function InstitutionsPage() {
     setEditingId(null);
     setName("");
     setShortName("");
-    setCategory("College / University");
+    setCategory("Student / University");
     setRegionCode("Region XI — Davao Region");
     setCity("Davao City");
     setThemeColor("#2563EB");
@@ -459,7 +527,13 @@ export default function InstitutionsPage() {
     }
   };
 
-  const categories = ["All", "College / University", "Hospital / Clinic", "Corporate / Workplace", "Government"];
+  const categories = [
+    "All",
+    "Student / University",
+    "Private Workplace / Retail",
+    "Healthcare & Duty Roster",
+    "Government Sector"
+  ];
   
   const regions = [
     "All",
@@ -487,7 +561,7 @@ export default function InstitutionsPage() {
       (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.shortName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.city || "").toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCat = selectedCategory === "All" || item.category === selectedCategory;
+    const matchesCat = selectedCategory === "All" || normalizeCategoryLabel(item.category, item.name, item.shortName) === selectedCategory;
     const matchesReg = selectedRegion === "All" || (item.regionCode || "").includes(selectedRegion);
     return matchesSearch && matchesCat && matchesReg;
   });
@@ -538,12 +612,10 @@ export default function InstitutionsPage() {
                   value={batchCategory}
                   onChange={setBatchCategory}
                   options={[
-                    { value: "College / University", label: "College / University" },
-                    { value: "Hospital / Medical Duty", label: "Hospital / Medical Duty" },
-                    { value: "Fast Food / Restaurant", label: "Fast Food / Restaurant" },
-                    { value: "Mall / Retail Store", label: "Mall / Retail Store" },
-                    { value: "Corporate / BPO Workplace", label: "Corporate / BPO Workplace" },
-                    { value: "Government Office", label: "Government Office" }
+                    "Student / University",
+                    "Private Workplace / Retail",
+                    "Healthcare & Duty Roster",
+                    "Government Sector"
                   ]}
                 />
               </div>
@@ -661,7 +733,7 @@ export default function InstitutionsPage() {
         </div>
 
         {/* Search, Region & Category Filter Bar */}
-        <div className="p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs flex flex-col lg:flex-row items-center gap-4">
+        <div className="p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D] shadow-xs flex flex-col lg:flex-row items-center gap-4">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
@@ -721,7 +793,7 @@ export default function InstitutionsPage() {
         {isLoading ? (
           <SkeletonCardGrid count={8} />
         ) : filtered.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] text-slate-400 text-xs space-y-4">
+          <div className="py-20 text-center rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D] text-slate-400 text-xs space-y-4">
             <School className="w-12 h-12 mx-auto text-slate-300" />
             <div>
               <p className="font-bold text-sm text-slate-800 dark:text-slate-200">No institutions found</p>
@@ -814,7 +886,7 @@ export default function InstitutionsPage() {
                           </div>
                         </div>
 
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 truncate max-w-[100px]">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-[#25273A] text-slate-700 dark:text-slate-300 truncate max-w-25">
                           {item.shortName}
                         </span>
                       </div>
@@ -826,7 +898,7 @@ export default function InstitutionsPage() {
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
                         <span>{item.city}</span>
                         <span>•</span>
-                        <span className="text-[11px] font-medium">{item.category}</span>
+                        <span className="text-[11px] font-medium">{normalizeCategoryLabel(item.category, item.name, item.shortName)}</span>
                       </p>
                     </div>
 
@@ -869,7 +941,7 @@ export default function InstitutionsPage() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 dark:border-[#282A3D] shadow-xs">
+              <div className="flex items-center justify-between p-4 rounded-3xl bg-white dark:bg-[#1C1D2B] border border-slate-200 dark:border-[#282A3D]/70 shadow-xs">
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
                   Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} institutions
                 </p>
@@ -878,7 +950,7 @@ export default function InstitutionsPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                     disabled={currentPage === 1}
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
+                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:hover:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -890,7 +962,7 @@ export default function InstitutionsPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
+                    className="p-2 rounded-xl bg-slate-50 dark:bg-[#25273A]/60 hover:bg-slate-100 dark:hover:bg-[#25273A] disabled:opacity-40 text-slate-600 dark:text-slate-400 transition-colors"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -902,7 +974,7 @@ export default function InstitutionsPage() {
 
         {/* Add / Edit Institution Modal */}
         {isModalOpen && typeof document !== "undefined" && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="fixed inset-0 z-9999 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
             <div className="w-full max-w-lg bg-white dark:bg-[#1C1D2B] rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-[#282A3D] space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#282A3D]">
                 <div className="flex items-center gap-2.5">
@@ -1039,10 +1111,10 @@ export default function InstitutionsPage() {
                       value={category}
                       onChange={setCategory}
                       options={[
-                        "College / University",
-                        "Hospital / Clinic",
-                        "Corporate / Workplace",
-                        "Government",
+                        "Student / University",
+                        "Private Workplace / Retail",
+                        "Healthcare & Duty Roster",
+                        "Government Sector",
                       ]}
                     />
                   </div>

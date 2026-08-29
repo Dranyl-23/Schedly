@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../models/institution_directory.dart';
 
@@ -23,16 +24,30 @@ class InstitutionLogo extends StatelessWidget {
         errorBuilder: (context, error, stackTrace) => _buildFallback(isDark),
       );
     } else if (item.logoUrl.isNotEmpty) {
-      content = Image.network(
-        item.logoUrl,
-        fit: BoxFit.contain,
-        headers: const {'User-Agent': 'Mozilla/5.0 (Android; Mobile)'},
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return _buildFallback(isDark);
-        },
-        errorBuilder: (context, error, stackTrace) => _buildFallback(isDark),
-      );
+      if (item.logoUrl.startsWith('data:image/')) {
+        try {
+          final base64String = item.logoUrl.split(',').last;
+          final bytes = base64Decode(base64String);
+          content = Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => _buildFallback(isDark),
+          );
+        } catch (_) {
+          content = _buildFallback(isDark);
+        }
+      } else {
+        content = Image.network(
+          item.logoUrl,
+          fit: BoxFit.contain,
+          headers: const {'User-Agent': 'Mozilla/5.0 (Android; Mobile)'},
+          loadingBuilder: (context, child, progress) {
+            if (progress == null) return child;
+            return _buildFallback(isDark);
+          },
+          errorBuilder: (context, error, stackTrace) => _buildFallback(isDark),
+        );
+      }
     } else {
       content = _buildFallback(isDark);
     }
