@@ -2,6 +2,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../core/database/schedule_repository.dart';
+import '../core/notifications/notification_service.dart';
 import '../models/alarm_tone.dart';
 
 class SoundSettingsState {
@@ -76,6 +78,15 @@ class SoundSettingsNotifier extends StateNotifier<SoundSettingsState> {
     _box ??= await Hive.openBox('app_settings_box');
     await _box?.put(_key, id);
     state = state.copyWith(selectedToneId: id);
+
+    // Reschedule all active alarms so they immediately use the new tone's channel
+    try {
+      final repo = ScheduleRepository();
+      final schedules = repo.getAllSchedules();
+      if (schedules.isNotEmpty) {
+        await NotificationService().rescheduleAll(schedules);
+      }
+    } catch (_) {}
   }
 
   Future<void> playPreview(String toneId) async {

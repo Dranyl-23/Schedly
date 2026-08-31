@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/notifications/notification_service.dart';
 import '../../core/utils/page_transitions.dart';
 import '../../providers/sound_settings_provider.dart';
 import '../onboarding/workspace_setup_screen.dart';
 import '../settings/ai_settings_view.dart';
+import '../settings/battery_optimization_view.dart';
 import '../settings/widgets/alarm_tone_picker_modal.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -155,6 +157,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       onTap: () => AlarmTonePickerModal.show(context),
+                    ),
+                    _buildSubtleDivider(isDark),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.notification_add_rounded, color: Color(0xFF10B981), size: 20),
+                      ),
+                      title: const Text(
+                        'Test Alarm & Notification',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        'Send an instant high-priority alarm & status bar test',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Test Now',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ),
+                      onTap: () async {
+                        await NotificationService().showTestNotification();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Test alarm sent! Check your status bar and alarm sound.'),
+                              duration: Duration(seconds: 3),
+                              backgroundColor: Color(0xFF10B981),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                    _buildSubtleDivider(isDark),
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.battery_alert_rounded, color: Color(0xFFEF4444), size: 20),
+                      ),
+                      title: const Text(
+                        'Battery & Background Guide',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                      ),
+                      subtitle: Text(
+                        'Keep alarms running on Xiaomi, Samsung, Oppo & Vivo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textSecondaryDark : const Color(0xFF64748B),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8)),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SmoothSlideFadeRoute(page: const BatteryOptimizationView()),
+                        );
+                      },
                     ),
                   ],
                 ),

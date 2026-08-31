@@ -55,7 +55,7 @@ class BatteryOptimizationView extends StatelessWidget {
             brand: 'Xiaomi / Poco / Redmi (MIUI & HyperOS)',
             icon: Icons.phone_android_rounded,
             steps: [
-              'Go to Settings > Apps > Manage Apps > Schedule Scanner',
+              'Go to Settings > Apps > Manage Apps > Reminda',
               'Enable "Autostart"',
               'Set Battery Saver to "No restrictions"',
               'Enable "Show on Lock screen" and "Pop-up notifications"',
@@ -68,10 +68,10 @@ class BatteryOptimizationView extends StatelessWidget {
             brand: 'Samsung (One UI)',
             icon: Icons.smartphone_rounded,
             steps: [
-              'Go to Settings > Apps > Schedule Scanner > Battery',
+              'Go to Settings > Apps > Reminda > Battery',
               'Select "Unrestricted"',
               'Go to Settings > Battery > Background usage limits',
-              'Ensure Schedule Scanner is in "Never sleeping apps"',
+              'Ensure Reminda is in "Never sleeping apps"',
             ],
             isDark: isDark,
           ),
@@ -81,7 +81,7 @@ class BatteryOptimizationView extends StatelessWidget {
             brand: 'Oppo / Realme (ColorOS / Realme UI)',
             icon: Icons.phone_iphone_rounded,
             steps: [
-              'Go to Settings > App Management > Schedule Scanner',
+              'Go to Settings > App Management > Reminda',
               'Enable "Allow Auto-launch" & "Allow background activity"',
               'Turn off battery optimization for the app',
             ],
@@ -94,7 +94,7 @@ class BatteryOptimizationView extends StatelessWidget {
             icon: Icons.stay_current_portrait_rounded,
             steps: [
               'Go to Settings > Battery > High background power consumption',
-              'Toggle Schedule Scanner to ON',
+              'Toggle Reminda to ON',
               'Enable Auto-start in App Manager',
             ],
             isDark: isDark,

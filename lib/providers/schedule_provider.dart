@@ -29,12 +29,21 @@ class ScheduleNotifier extends StateNotifier<List<ScheduleEntry>> {
     this._syncService,
   ) : super([]) {
     _loadSchedules();
-    _syncService.startSync(onDataChanged: () => _loadSchedules());
+    _rescheduleAlarms();
+    _syncService.startSync(onDataChanged: () {
+      _loadSchedules();
+      _rescheduleAlarms();
+    });
   }
 
   void _loadSchedules() {
     final schedules = _repository.getAllSchedules();
     state = schedules;
+  }
+
+  void _rescheduleAlarms() {
+    final active = state.where((e) => e.isActive).toList();
+    _notificationService.rescheduleAll(active);
   }
 
   Future<void> addSchedule(ScheduleEntry entry) async {

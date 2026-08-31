@@ -49,6 +49,12 @@ void main() async {
   await notificationService.initialize();
   await notificationService.requestPermissions();
 
+  // 4. Ensure all active alarms are registered in OS AlarmManager upon app start
+  final allSavedSchedules = repository.getAllSchedules();
+  if (allSavedSchedules.isNotEmpty) {
+    await notificationService.rescheduleAll(allSavedSchedules);
+  }
+
   runApp(
     ProviderScope(
       overrides: [
